@@ -1,0 +1,7 @@
+# Ignore Node.js modules
+node_modules/
+
+# Ignore environment-specific configuration files (e.g., .env)
+.env
+
+Data structure TAS.txt
