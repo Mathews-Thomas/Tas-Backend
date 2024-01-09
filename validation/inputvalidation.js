@@ -1,3 +1,7 @@
+import Role from "../models/RoleSchema.js"
+import mongoose from 'mongoose';
+
+
 export const validateName = (name) => {
     if(typeof name !== 'string'){
         return {
@@ -11,6 +15,26 @@ export const validateName = (name) => {
     }
     return {}
 }
+
+
+export const ValidateRoll = async (rollId) => {
+    if (!rollId) {
+        return { error: "Please choose a Role" };
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(rollId)) {
+        return { error: "Invalid Role ID" };
+    }
+
+    // Check if the role exists in the database
+    const roleExists = await Role.exists({ _id: rollId });
+    if (!roleExists) {
+        return { error: "Role does not exist" };
+    }
+
+    return {};
+};
+
 
 export const validateZipCode = (zipCode) => {
     if (typeof zipCode !== 'string') {

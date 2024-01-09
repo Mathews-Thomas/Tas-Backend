@@ -1,8 +1,10 @@
 import Branch from "../models/BranchSchema.js"
 import Employee from "../models/EmployeeSchema.js"
+import Role from "../models/RoleSchema.js"
 import Admin from "../models/adminSchema.js"
 import { validateInputs } from "../validation/validate.js"
 import { jwtSignAdmin} from "./Jwt.js"
+import bcrypt from "bcrypt"
 
 export const  loginAdmin = async (req,res) =>{
 const {loginId,password} = req.body 
@@ -22,34 +24,42 @@ if(admin){
 }
 
 
+
 export const employeeRegister = async (req,res) =>{
-const {firstName,lastName,email,phone,position,department,securityCredentials} = req.body
-const createdAt = new Date()
-const validationErrors = validateInputs([
-    [firstName,"name","firstName"],
-    [lastName,"name","lastName"],
-    [email,"email","email"],
-    [phone,"phone","phone"],
-    [position,"psoision","position"],
-    [department,"position","department"],
-])
+    const { firstName, lastName, email, phone, position, department, securityCredentials, role } = req.body;
+    const createdAt = new Date();
 
-if (Object.keys(validationErrors).length > 0) {
-    return res.status(400).json({ errors: validationErrors });
-}
+    const validationErrors = await validateInputs([
+        [firstName, "name", "firstName"],
+        [lastName, "name", "lastName"],
+        [email, "email", "email"],
+        [phone, "phone", "phone"],
+        [position, "position", "position"],
+        [department, "department", "department"],
+        [role, "role", "role"],
+    ]);
 
-const userExist = await Employee.findOne({"securityCredentials.loginId":req.body.securityCredentials.loginId})
-if(userExist){
-    return res.status(400).json({ errors: "username already existed" });
-}
-const emp = await Employee.create({...req.body,createdAt});
+    if (Object.keys(validationErrors).length > 0) {
+        return res.status(400).json({ errors: validationErrors });
+    }
 
-return res.status(200).json(emp)
+    const userExist = await Employee.findOne({ "securityCredentials.loginId": securityCredentials.loginId });
+    if (userExist) {
+        return res.status(400).json({ error: "Username already exists" });
+    }
+
+    const hashedPassword = await bcrypt.hash(securityCredentials.password, 10);
+    const newEmployee = {firstName,lastName,email,phone,position,department,role,createdAt,
+        securityCredentials: { ...securityCredentials, password: hashedPassword },
+    };
+    const emp = await Employee.create(newEmployee);
+    const { securityCredentials: _, ...EmpData } = emp.toObject();
+
+    return res.status(200).json({ message: "Employee registered successfully", EmpData });
 }
 
 
 export const BranchRegister = async (req,res)=>{
-    const createdAt = new Date()
     const {branchName,location,contact,securityCredentials}= req.body
     const validationErrors = validateInputs([
     [branchName,"name","branchName"],
@@ -61,7 +71,8 @@ export const BranchRegister = async (req,res)=>{
     [contact?.phone,"phone","Phone Number"],
     [contact?.email,"email","email"],
     [securityCredentials?.loginId,"loginId","user id"],
-])
+]) 
+
 
 if (Object.keys(validationErrors).length > 0) {
     return res.status(400).json({ errors: validationErrors });
@@ -70,9 +81,36 @@ const BranchExist = await Branch.findOne({"securityCredentials.loginId":req.body
 if(BranchExist){
     return res.status(400).json({ errors: "Branch id already existed" });
 }
-    const emp = await Branch.create({...req.body,createdAt});
 
-return res.status(200).json(emp)
+const encryptedPassword = await bcrypt.hash(securityCredentials.password, 10);
+const createdAt = new Date();
+const newBranch = { ...req.body, createdAt, securityCredentials: { ...securityCredentials, password: encryptedPassword } };
+const createdBranch = await Branch.create(newBranch);
+ 
+const { securityCredentials: _, ...branchData } = createdBranch.toObject();
+return res.status(200).json({message: "Branch registered successfully",...branchData});
+
+}
+
+export const AddRole = async (req,res)=>{
+    const [name,permissions,roleType] = req.body
+    const createdAt = new Date()
+   const validationErrors = validateInputs([
+    [name,"name","Empoyee Position"],
+    [roleType,"name","Role Type"],
+    [permissions,"permissions","permissions"]
+    ])
+
+    if(Object.keys(validationErrors).length>0){
+        return res.status(400).json({errors:validationErrors})
+    }
+
+    const NameExist = await Role.findOne({name:name})
+    if(NameExist){
+        return res.status(400).json({ errors: "Role Name is already existed" });
+    }
+    const NewRole = Roll.create({name,permissions,createdAt:createdAt})
+        return res.status(200).json(NewRole)
 
 }
 

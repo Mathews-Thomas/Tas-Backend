@@ -9,7 +9,8 @@ import {
     validateProductCategory,
     validatePosision,
     loginId,
-    validateZipCode
+    validateZipCode,
+    ValidateRoll
 } from "./inputvalidation.js"
 
 const validators = {
@@ -23,20 +24,21 @@ const validators = {
     productCategory: validateProductCategory,
     posision:validatePosision,
     loginId:loginId,
-    zip:validateZipCode
+    zip:validateZipCode,
+    role:ValidateRoll,
 }
 
-export function validateInputs(inputs) {
+export async function validateInputs(inputs) {
     const errors = {};
 
-    inputs.forEach(([value, type,field]) => {
+    for (const [value, type, field] of inputs) {
         if (validators[type]) {
-            const result = validators[type](value);
+            const result = await validators[type](value); // Await the result
             if (result.error) {
                 errors[field] = result.error;
             }
         }
-    });
+    }
 
     return errors;
 }
