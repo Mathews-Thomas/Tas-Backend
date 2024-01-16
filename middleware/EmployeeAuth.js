@@ -34,14 +34,14 @@ const auth = (requiredPermissions = []) => {
             userData.role.permissions.includes(p)
           );
 
-          if (!hasPermission) {
+          if (!hasPermission && !userData.role.permissions.includes('superAdminAccess')) {
             return res
               .status(403)
               .send({ error: "Access Denied: Insufficient Permissions" });
           }
         }
 
-        req.verifiedUserId = data.EmployeeId;
+        req.verifiedUser =userData;
         next();
       });
     } catch (error) {

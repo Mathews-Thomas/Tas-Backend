@@ -10,11 +10,17 @@ import {
     validatePosision,
     loginId,
     validateZipCode,
-    ValidateRoll
+    ValidateRoll,
+    verifyObjID,
+    validateAge,
+    validateGender,
+    ValidateBranchID
 } from "./inputvalidation.js"
 
 const validators = {
     name: validateName,
+    age:validateAge,
+    gender:validateGender,
     email: validateEmail,
     phone: validateMobile,
     password: validatePassword,
@@ -26,6 +32,8 @@ const validators = {
     loginId:loginId,
     zip:validateZipCode,
     role:ValidateRoll,
+    objectID:verifyObjID,
+    BranchID:ValidateBranchID,
 }
 
 export async function validateInputs(inputs) {

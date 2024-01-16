@@ -6,7 +6,7 @@ export const jwtSign = (EmployeeId) => {
     },
     process.env.AUTH_SECRET_KEY,
     {
-        expiresIn: '7d'
+        expiresIn: '1d'
     })
 }
 

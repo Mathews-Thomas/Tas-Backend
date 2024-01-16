@@ -1,3 +1,4 @@
+import Branch from "../models/BranchSchema.js";
 import Role from "../models/RoleSchema.js"
 import mongoose from 'mongoose';
 
@@ -5,7 +6,12 @@ import mongoose from 'mongoose';
 export const validateName = (name) => {
     if(typeof name !== 'string'){
         return {
-            error: "must be string"
+            error: "must be a string"
+        }
+    }
+    if(name.trim().length === 0){
+        return {
+            error: "must not be empty"
         }
     }
     if(name.length > 16){
@@ -15,6 +21,7 @@ export const validateName = (name) => {
     }
     return {}
 }
+
 
 
 export const ValidateRoll = async (rollId) => {
@@ -30,6 +37,32 @@ export const ValidateRoll = async (rollId) => {
     const roleExists = await Role.exists({ _id: rollId });
     if (!roleExists) {
         return { error: "Role does not exist" };
+    }
+
+    return {};
+};
+
+
+export const verifyObjID = (ObjectId)=>{
+    if(!ObjectId) return {error:"ObjectID id missing"}
+    if(!mongoose.Types.ObjectId.isValid(ObjectId)) return {error:"Invalid ObjectID"}
+    return {};
+}
+ 
+
+export const ValidateBranchID = async (BranchID) => {
+    if (!BranchID) {
+        return { error: "Branch ID is missing" };
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(BranchID)) {
+        return { error: "Invalid Branch ID" };
+    }
+
+    // Check if the role exists in the database
+    const branchExists = await Branch.exists({ _id: BranchID });
+    if (!branchExists) {
+        return { error: "Branch does not exist" };
     }
 
     return {};
@@ -168,6 +201,44 @@ export const validatePrice = (price) => {
     if(price > 999999999){
         return {
             error: "must be less than 1000000000"
+        }
+    }
+    return {}
+}
+
+export const validateGender = (gender) => {
+    if (typeof gender !== 'string') {
+        return {
+            error: "Gender must be a string."
+        };
+    }
+
+    const validGenders = ["male", "female", "non-binary", "other"];
+    
+    if (!validGenders.includes(gender.toLowerCase())) {
+        return {
+            error: "Invalid gender. Please provide a valid gender."
+        };
+    }
+
+    return {};
+};
+
+
+export const validateAge = (age) => {
+    if(typeof age !== 'number'){
+        return {
+            error: "must be a number"
+        }
+    }
+    if(age < 0){
+        return {
+            error: "must be a positive number"
+        }
+    }
+    if(age > 110){
+        return {
+            error: "must be less than 110"
         }
     }
     return {}

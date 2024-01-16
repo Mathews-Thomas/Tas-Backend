@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import Role from "./RoleSchema.js";
+import { addCreatedAtIST } from "../Commonfn/ISTFormat.js";
 
 const { Schema } = mongoose;
 
@@ -16,8 +17,9 @@ const employeeSchema = new Schema({
   department: String,
   role: { type: mongoose.Schema.Types.ObjectId, ref: Role },
   status: Boolean,
-  createdAt: { type: String, required: true },
+  createdAt: { type: Date, default: Date.now },
 });
+await addCreatedAtIST(employeeSchema)
 
 const Employee = mongoose.model("Employee", employeeSchema);
 

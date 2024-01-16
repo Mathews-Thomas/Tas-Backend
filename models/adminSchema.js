@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 import Role from "./RoleSchema.js";
-
+import { addCreatedAtIST } from "../Commonfn/ISTFormat.js";
 const securityCredentialsSchema = new mongoose.Schema(
   {
     loginId: { type: String, unique: true ,lowercase: true},
@@ -22,8 +22,9 @@ const adminSchema = new mongoose.Schema({
   role: { type: mongoose.Schema.Types.ObjectId,  ref:Role },
   securityCredentials: securityCredentialsSchema,
   status: Boolean,
-  createdAt: { type: String, required: true },
+  createdAt: { type: Date, default: Date.now },
 });
+await addCreatedAtIST(adminSchema)
 
 const Admin = mongoose.model("Admin", adminSchema);
 

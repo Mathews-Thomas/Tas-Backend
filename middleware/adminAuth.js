@@ -34,7 +34,7 @@ const adminAuth = (requiredPermissions = []) => {
                     }
                 }
 
-                req.verifiedUserId = data.adminId;
+                req.verifiedUser = adminData;
                 next();
             });
         } catch (error) {
