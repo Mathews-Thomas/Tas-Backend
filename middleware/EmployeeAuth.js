@@ -16,8 +16,7 @@ const auth = (requiredPermissions = []) => {
 
         const userData = await Employee.findOne({
           _id: new mongoose.Types.ObjectId(data.EmployeeId),
-        }).populate("role"); // Attempt to populate the role
-
+        }).populate("role"); // Attempt to populate the role 
         if (!userData?.status) {
           return res.status(401).send({ error: "User has been blocked" });
         }

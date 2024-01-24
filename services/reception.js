@@ -6,14 +6,14 @@ import bcrypt from "bcrypt";
 import Branch from "../models/BranchSchema.js";
 import VisitorType from "../models/visitorTypeSchema.js";
 import PatientType from "../models/patientTypeSchema.js";
-import Doctor from "../models/DoctorSchema.js"; 
+import Doctor from "../models/DoctorSchema.js";
 import Procedure from "../models/ProcedureSchema.js";
 import PatientInvoice from "../models/PatientInvoiceSchema.js";
 import PaymentMethod from "../models/PaymentMethodSchema.js";
 
-
 // ================================================
 export const employeeLogin = async (req, res) => {
+ 
   const { loginId, password } = req.body;
 
   const validationErrors = validateInputs([
@@ -28,6 +28,12 @@ export const employeeLogin = async (req, res) => {
     "securityCredentials.loginId": loginId,
   }).populate("role");
   if (!employee) return res.status(401).json({ err: "Username mismatched" });
+  if (!employee.status)
+    return res
+      .status(403)
+      .json({
+        err: "Access denied. Please contact the administrator.",
+      });
 
   const isPasswordMatch = await bcrypt.compare(
     password,
@@ -104,8 +110,8 @@ export const addPatient = async (req, res) => {
 // ================================================
 export const getAddPatient = async (req, res) => {
   const BranchID = req.params.BranchID;
-  const VisitorTypes = await VisitorType.find();
-  const PatientTypes = await PatientType.find();
+  const VisitorTypes = await VisitorType.find({ status: true });
+  const PatientTypes = await PatientType.find({ status: true });
   const { branchName } = await Branch.findOne({ _id: BranchID });
   const PatientCout = await Patient.countDocuments({ BranchID });
   const nextPatientID = `TM${branchName[0]}${PatientCout + 1}`;
@@ -122,28 +128,37 @@ export const getAddPatient = async (req, res) => {
 
 // ================================================
 export const getPatientList = async (req, res) => {
-  const { page = 1, limit = 10, Name, phone, PatientID, search,startDate, endDate } = req.query;
-
+  const {
+    page = 1,
+    limit = 10,
+    Name,
+    phone,
+    PatientID,
+    search,
+    startDate,
+    endDate,
+  } = req.query;
+  const BranchID = req.params.BranchID;
   // Building a filter object for Mongoose query
-  let filter = {};
+  let filter = { BranchID, status: true };
   if (Name) filter.Name = { $regex: Name, $options: "i" }; // Case-insensitive search
   if (phone) filter.phone = phone;
   if (PatientID) filter.PatientID = { $regex: PatientID, $options: "i" };
   if (startDate || endDate) {
     filter.createdAt = {};
     if (startDate) {
-        filter.createdAt.$gte = new Date(startDate);
+      filter.createdAt.$gte = new Date(startDate);
     }
     if (endDate) {
-        filter.createdAt.$lte = new Date(endDate);
+      filter.createdAt.$lte = new Date(endDate);
     }
-}
+  }
   if (search) {
     filter = {
       $or: [
-        { Name: { $regex: search, $options: "i" } },
-        { phone: { $regex: search, $options: "i" } },
-        { PatientID: { $regex: search, $options: "i" } },
+        { Name: { $regex: search, $options: "i" }, status: true },
+        { phone: { $regex: search, $options: "i" }, status: true },
+        { PatientID: { $regex: search, $options: "i" }, status: true },
       ],
     };
   }
@@ -154,7 +169,9 @@ export const getPatientList = async (req, res) => {
     .exec();
 
   // Get the total number of patients to calculate total pages
-  const count = await Patient.countDocuments(filter);
+  const count = await Patient.countDocuments(filter)
+    .populate("VisitorTypeID")
+    .populate("patientTypeID");
 
   res.status(200).json({
     patients,
@@ -163,31 +180,101 @@ export const getPatientList = async (req, res) => {
   });
 };
 
-
 // ================================================
-export const addInvoice = async (req,res)=>{
-    const {patient,doctorId,DepartmentID,ProcedureID,salesAmount,ProcedureAmount,AmoutMethod,consultationFee,TotalAmount} = req.body
-    
-}
+export const addInvoice = async (req, res) => {
+  const {
+    invoiceID,
+    patient,
+    doctorID,
+    DepartmentID,
+    items,
+    totalAmount,
+    BranchID,
+    paymentMethod,
+    paymentMethodID,
+    totalDiscount,
+    amountToBePaid,
+  } = req.body;
+  const { firstName, lastName } = req.verifiedUser;
 
+  const validationErrors = await validateInputs([
+    [doctorID, "objectID", "doctorID"],
+    [DepartmentID, "objectID", "DepartmentID"],
+    [paymentMethodID, "objectID", "paymentMethodID"],
+    [patient._id, "objectID", "patientID"],
+    [invoiceID, "name", "invoiceID"],
+    [totalAmount, "price", "totalAmount"],
+    [amountToBePaid, "price", "amountToBePaid"],
+    [BranchID, "BranchID", "BranchID"],
+  ]);
 
-export const getInviuceDropdowns = async (req,res) =>{
-  const { PatientID, BranchID } = req.query; 
-  const companyInfo ={
+  if (Object.keys(validationErrors).length > 0)
+    return res.status(400).json({ errors: validationErrors });
+
+  const newInvoice = {
+    invoiceID: invoiceID,
+    patientID: patient._id,
+    doctorID: doctorID,
+    DepartmentID: DepartmentID,
+    paymentMethod: {
+      paymentMethod,
+      paymentMethodID,
+    },
+    items: items,
+    totalAmount: totalAmount,
+    totalDiscount: totalDiscount,
+    amountToBePaid: amountToBePaid,
+    createdBy: firstName + " " + lastName,
+    BranchID: BranchID,
+    status: true,
+  };
+
+  PatientInvoice.create(newInvoice)
+    .then((resp) => {
+      Patient.findOneAndUpdate(
+        { _id: patient._id },
+        { $push: { Invoices: resp?._id } },
+        { new: true }
+      )
+        .then(() => {})
+        .catch((updateErr) => {
+          res.status(400).json({ error: "Error updating patient:", updateErr });
+        });
+      res.status(200).json({ message: "Invoice created", data: resp });
+    })
+    .catch((err) => {
+      res.status(400).json({ error: "Error creating invoice", err });
+    });
+};
+
+export const getInviuceDropdowns = async (req, res) => {
+  const { PatientID, BranchID } = req.query;
+  const { firstName, lastName } = req.verifiedUser;
+  const companyInfo = {
     companyName: "TOPMOST KALAMASSERY",
-  companyAddress: `OPPOSITE METRO PILLAR 316, PKA NAGAR,ALFIYA NAGARA, SOUTH KALAMASSRY, ERNAKULAM, KERALA
+    companyAddress: `OPPOSITE METRO PILLAR 316, PKA NAGAR,ALFIYA NAGARA, SOUTH KALAMASSRY, ERNAKULAM, KERALA
   KOCHI 682033 , 
-  Phone: 7558011177
-  Email: topmostkalamasserry@gmail.com`,
-  }
-  const [Doctors,Patients,Procedures, VisitorTypes, PatientTypes, branch,paymentMethods] = await Promise.all([
-    Doctor.find().populate('DepartmentID'),
-    Patient.findOne({PatientID}).populate('VisitorTypeID').populate('patientTypeID'),
-    Procedure.find(),
-    VisitorType.find(),
-    PatientType.find(),
+  Phone:7558011177
+  Email:topmostkalamasserry@gmail.com`,
+  };
+  const [
+    Doctors,
+    Patients,
+    Procedures,
+    VisitorTypes,
+    PatientTypes,
+    branch,
+    paymentMethods,
+  ] = await Promise.all([
+    Doctor.find({ status: true }).populate("DepartmentID"),
+    Patient.findOne({ PatientID })
+      .populate("VisitorTypeID")
+      .populate("patientTypeID"),
+    Procedure.find({ status: true }),
+    VisitorType.find({ status: true }),
+    PatientType.find({ status: true }),
     Branch.findOne({ _id: BranchID }),
-    PaymentMethod.find()
+    PaymentMethod.find({ status: true }),
   ]);
 
   if (!branch) return res.status(404).send({ errors: "Branch not found." });
@@ -196,11 +283,111 @@ export const getInviuceDropdowns = async (req,res) =>{
   const nextInvoceID = `INV${branch.branchName[0]}${PatientInvoiceCount + 1}`;
 
   // Check for empty results
-  if (!Doctors.length  || !Procedures.length || !VisitorTypes.length || !PatientTypes.length) {
-    return res.status(404).send({ errors: "One or more dropdown lists are empty." });
+  if (
+    !Doctors.length ||
+    !Procedures.length ||
+    !VisitorTypes.length ||
+    !PatientTypes.length
+  ) {
+    return res
+      .status(404)
+      .send({ errors: "One or more dropdown lists are empty." });
   }
 
-  if(!PatientID) return res.json({Patients:null, nextInvoceID,companyInfo, Doctors,  Procedures, VisitorTypes, PatientTypes,paymentMethods})
+  if (!PatientID)
+    return res.json({
+      Patients: null,
+      nextInvoceID,
+      companyInfo,
+      Doctors,
+      Procedures,
+      VisitorTypes,
+      PatientTypes,
+      paymentMethods,
+      createdBy: firstName + " " + lastName,
+    });
 
-  res.status(200).json({ nextInvoceID,companyInfo,Patients, Doctors,  Procedures, VisitorTypes, PatientTypes,paymentMethods });
-}
+  res
+    .status(200)
+    .json({
+      nextInvoceID,
+      companyInfo,
+      Patients,
+      Doctors,
+      Procedures,
+      VisitorTypes,
+      PatientTypes,
+      paymentMethods,
+      createdBy: firstName + " " + lastName,
+    });
+};
+
+export const getPatientInvoiceList = async (req, res) => {
+  const {
+    page = 1,
+    limit = 10,
+    Name,
+    phone,
+    PatientID,
+    invoiceID,
+    search,
+    startDate,
+    endDate,
+  } = req.query;
+  const { BranchID } = req.params;
+  const companyInfo = {
+    companyName: "TOPMOST KALAMASSERY",
+    companyAddress: `OPPOSITE METRO PILLAR 316, PKA NAGAR,ALFIYA NAGARA, SOUTH KALAMASSRY, ERNAKULAM, KERALA
+  KOCHI 682033 , 
+  Phone:7558011177
+  Email:topmostkalamasserry@gmail.com`,
+  };
+
+  // Building a filter object for Mongoose query
+  let filter = { status: true };
+
+  if (BranchID) filter.BranchID = BranchID;
+  if (PatientID) {
+    filter.PatientID = { $regex: PatientID, $options: "i" };
+  }
+  if (invoiceID) filter.invoiceID = { $regex: invoiceID, $options: "i" };
+  if (startDate || endDate) {
+    filter.createdAt = {};
+    if (startDate) {
+      filter.createdAt.$gte = new Date(startDate);
+    }
+    if (endDate) {
+      filter.createdAt.$lte = new Date(endDate);
+    }
+  }
+  if (search) {
+    filter = {
+      $or: [
+        {
+          invoiceID: { $regex: search, $options: "i" },
+          status: true,
+          BranchID: BranchID,
+        },
+      ],
+    };
+  }
+
+  const patientInvoice = await PatientInvoice.find(filter)
+    .populate("doctorID")
+    .populate("patientID")
+    .populate("DepartmentID")
+    .sort({ createdAt: -1 })
+    .limit(limit * 1)
+    .skip((page - 1) * limit)
+    .exec();
+
+  // Get the total number of patients to calculate total pages
+  const count = await PatientInvoice.countDocuments(filter);
+
+  res.status(200).json({
+    patientInvoice,
+    totalPages: Math.ceil(count / limit),
+    currentPage: page,
+    companyInfo,
+  });
+};

@@ -18,7 +18,7 @@ const patientSchema = new mongoose.Schema({
   },
   phone: String,
   email:String,
-  Invoices:[String],
+  Invoices:[mongoose.Schema.Types.ObjectId],
   VisitorTypeID:{type:mongoose.Schema.Types.ObjectId,ref:VisitorType},
   patientTypeID:{type:mongoose.Schema.Types.ObjectId,ref:PatientType},
   createdAt: { type: Date, default: Date.now },

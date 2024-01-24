@@ -14,9 +14,9 @@ export const validateName = (name) => {
             error: "must not be empty"
         }
     }
-    if(name.length > 16){
+    if(name.length > 20){
         return {
-            error: "must have less than 16 letters"
+            error: "must have less than 20 letters"
         }
     }
     return {}

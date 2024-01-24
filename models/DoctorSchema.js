@@ -15,16 +15,14 @@ const doctorSchema = new mongoose.Schema({
     required: true,
     trim: true,
   },
-  contact: {
-    email: {
+  email: {
       type: String,
       trim: true,
     },
-    phone: {
+  phone: {
       type: String,
       trim: true,
     },
-  },
   BranchID: {
     type: mongoose.Schema.Types.ObjectId,
     ref: Branch,

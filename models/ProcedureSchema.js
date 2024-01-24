@@ -7,6 +7,7 @@ const procedureSchema = new mongoose.Schema({
     Cost:{type:Number,required:true},
     DepartmentID: { type: mongoose.Schema.Types.ObjectId,  ref:Department },
     createdAt:{type:Date,default:Date.now}, 
+    createdBy: { type: String, required: true, trim: true },
     status:{type:Boolean,default:false}
 })
 await addCreatedAtIST(procedureSchema)

@@ -1,28 +1,6 @@
 import mongoose from "mongoose";
 const { Schema } = mongoose;
 import { addCreatedAtIST } from "../Commonfn/ISTFormat.js";
-const locationSchema = new Schema(
-  {
-    address: String,
-    city: String,
-    state: String,
-    country: String,
-    pincode: String,
-  },
-  { _id: false }
-);
-
-
-
-const contactSchema = new Schema(
-  {
-    phone: String,
-    email: String,
-  },
-  { _id: false }
-);
-
-
 
 const securityCredentialsSchema = new Schema(
   {
@@ -34,10 +12,17 @@ const securityCredentialsSchema = new Schema(
 
 const branchSchema = new Schema({
   branchName: String,
-  location: locationSchema,
-  contact: contactSchema,
+  address: String,
+  city: String,
+  state: String,
+  country: String,
+  pincode: String,
+  phone: String,
+  email: String,
+  createdBy:String,
   securityCredentials: securityCredentialsSchema,
   createdAt: { type: Date, default: Date.now },
+  status:{type:Boolean,default:false}
 });
 await addCreatedAtIST(branchSchema)
 const Branch = mongoose.model("Branch", branchSchema);
