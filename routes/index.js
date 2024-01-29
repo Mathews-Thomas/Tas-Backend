@@ -9,4 +9,4 @@ router.use('/',receptionRouter)
 router.use('/branch',BranchRouter)
 
 const rootRouter = router
-export default rootRouter; 
+export default rootRouter;

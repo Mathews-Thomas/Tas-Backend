@@ -10,9 +10,21 @@ import VisitorType from "../models/visitorTypeSchema.js";
 import PatientType from "../models/patientTypeSchema.js";
 import Procedure from "../models/ProcedureSchema.js";
 import Doctor from "../models/DoctorSchema.js";
+import Alert from "../models/AlertSchema.js";
+
+const models = {
+  Branch,
+  Employee,
+  Role,
+  Department,
+  PaymentMethod,
+  VisitorType,
+  PatientType,
+  Procedure,
+  Doctor,
+};
 
 export const employeeRegister = async (req, res) => {
-  
   const {
     firstName,
     lastName,
@@ -21,19 +33,19 @@ export const employeeRegister = async (req, res) => {
     address,
     email,
     phone,
-    designation, 
+    designation,
     password,
     loginId,
     role,
   } = req.body;
   const createdAt = new Date();
-  const Role = req?.verifiedUser?.role?.roleType
+  const Role = req?.verifiedUser?.role?.roleType;
   const validationErrors = await validateInputs([
     [firstName, "name", "firstName"],
     [lastName, "name", "lastName"],
     [email, "email", "email"],
     [phone, "phone", "phone"],
-    [designation, "name", "designation"], 
+    [designation, "name", "designation"],
     [role, "role", "role"],
     [age, "age", "Age"],
     [Gender, "Gender", "gender"],
@@ -59,15 +71,15 @@ export const employeeRegister = async (req, res) => {
     address,
     email,
     phone,
-    designation, 
+    designation,
     role,
     createdAt,
-    securityCredentials: 
-    { 
-    loginId,
-    password: hashedPassword 
+    securityCredentials: {
+      loginId,
+      password: hashedPassword,
     },
-    status:(Role === 'admin' ? true : false),
+    status: Role === "admin" ? true : false,
+    isApproved: Role === "admin" ? true : false,
   };
 
   const emp = await Employee.create(newEmployee);
@@ -77,7 +89,7 @@ export const employeeRegister = async (req, res) => {
     .status(200)
     .json({ message: "Employee registered successfully", EmpData });
 };
-
+//==============================================================================================
 export const BranchRegister = async (req, res) => {
   const {
     branchName,
@@ -91,7 +103,7 @@ export const BranchRegister = async (req, res) => {
     password,
     loginId,
   } = req.body;
-  const Role = req?.verifiedUser?.role?.roleType
+  const Role = req?.verifiedUser?.role?.roleType;
   const { firstName, lastName } = req.verifiedUser;
   const validationErrors = await validateInputs([
     [branchName, "name", "branchName"],
@@ -129,8 +141,8 @@ export const BranchRegister = async (req, res) => {
       password: encryptedPassword,
     },
     createdBy: firstName + " " + lastName,
-    status:(Role === 'admin' ? true : false),
-    
+    status: Role === "admin" ? true : false,
+    isApproved: Role === "admin" ? true : false,
   };
   const createdBranch = await Branch.create(newBranch);
 
@@ -139,7 +151,7 @@ export const BranchRegister = async (req, res) => {
     .status(200)
     .json({ message: "Branch registered successfully", ...branchData });
 };
-
+//==============================================================================================
 export const AddRole = async (req, res) => {
   const { name, permissions, roleType } = req.body;
   const validationErrors = await validateInputs([
@@ -159,15 +171,15 @@ export const AddRole = async (req, res) => {
   const NewRole = Role.create({ name, permissions, roleType });
   return res.status(200).json(NewRole);
 };
-
-export const addDepartment = async (req, res) => { 
+//==============================================================================================
+export const addDepartment = async (req, res) => {
   const { Name, BranchID } = req.body;
   const { firstName, lastName } = req.verifiedUser;
   const validationErrors = await validateInputs([
     [Name, "name", "Department Name"],
     [BranchID, "objectID", "Branch"],
   ]);
-const Role = req?.verifiedUser?.role?.roleType
+  const Role = req?.verifiedUser?.role?.roleType;
   if (Object.keys(validationErrors).length > 0)
     return res.status(400).json({ errors: validationErrors });
 
@@ -175,15 +187,17 @@ const Role = req?.verifiedUser?.role?.roleType
     Name,
     BranchID,
     createdBy: firstName + " " + lastName,
-    status:(Role === 'admin' ? true : false),
-  }; 
+    status: Role === "admin" ? true : false,
+    isApproved: Role === "admin" ? true : false,
+  };
   const DepartmentExist = await Department.findOne({
     Name: new RegExp(`^${Name}$`, "i"),
     BranchID: BranchID,
   });
 
   if (DepartmentExist)
-    return res.status(400)
+    return res
+      .status(400)
       .json({ errors: "Department Name is already existed" });
 
   Department.create(newDepartment)
@@ -194,11 +208,11 @@ const Role = req?.verifiedUser?.role?.roleType
     )
     .catch((err) => res.status(200).json({ message: "error", err }));
 };
-
+//==============================================================================================
 export const addPatientType = async (req, res) => {
   const { type, description } = req.body;
   const { firstName, lastName } = req.verifiedUser;
-  const Role = req?.verifiedUser?.role?.roleType
+  const Role = req?.verifiedUser?.role?.roleType;
 
   const validationErrors = await validateInputs([
     [type, "name", "type"],
@@ -211,7 +225,8 @@ export const addPatientType = async (req, res) => {
     type: type,
     description,
     createdBy: firstName + " " + lastName,
-    status:(Role === 'admin' ? true : false)
+    status: Role === "admin" ? true : false,
+    isApproved: Role === "admin" ? true : false,
   };
   const typeExists = await PatientType.findOne({
     type: new RegExp("^" + type.trim() + "$", "i"),
@@ -227,11 +242,11 @@ export const addPatientType = async (req, res) => {
     )
     .catch((err) => res.status(200).json({ message: "error", err }));
 };
-
-export const addVisitorType = async (req, res) => {
+//==============================================================================================
+export const addVisitorType = async (req, res) => { 
   const { type, description } = req.body;
   const { firstName, lastName } = req.verifiedUser;
-  const Role = req?.verifiedUser?.role?.roleType
+  const Role = req?.verifiedUser?.role?.roleType;
 
   const validationErrors = await validateInputs([
     [type, "name", "type"],
@@ -244,7 +259,8 @@ export const addVisitorType = async (req, res) => {
     type: type,
     description,
     createdBy: firstName + " " + lastName,
-    status:(Role === 'admin' ? true : false),
+    status: Role === "admin" ? true : false,
+    isApproved: Role === "admin" ? true : false,
   };
   const typeExists = await VisitorType.findOne({
     type: new RegExp("^" + type.trim() + "$", "i"),
@@ -260,9 +276,9 @@ export const addVisitorType = async (req, res) => {
     )
     .catch((err) => res.status(200).json({ message: "error", err }));
 };
-
+//==============================================================================================
 export const addPaymentMethod = async (req, res) => {
-  const Role = req?.verifiedUser?.role?.roleType
+  const Role = req?.verifiedUser?.role?.roleType;
   const { Method } = req.body;
   const { firstName, lastName } = req.verifiedUser;
   const validationErrors = await validateInputs([[Method, "name", "Method"]]);
@@ -272,7 +288,8 @@ export const addPaymentMethod = async (req, res) => {
   const newPaymentMethod = {
     Method: Method,
     createdBy: firstName + " " + lastName,
-    status:(Role === 'admin' ? true : false),
+    status: Role === "admin" ? true : false,
+    isApproved: Role === "admin" ? true : false,
   };
 
   const methodExists = await PaymentMethod.findOne({
@@ -288,11 +305,11 @@ export const addPaymentMethod = async (req, res) => {
     )
     .catch((err) => res.status(200).json({ message: "error", err }));
 };
-
+//==============================================================================================
 export const addprocedure = async (req, res) => {
   const { procedure, description, Cost, DepartmentID } = req.body;
   const { firstName, lastName } = req.verifiedUser;
-  const Role = req?.verifiedUser?.role?.roleType
+  const Role = req?.verifiedUser?.role?.roleType;
   const validationErrors = await validateInputs([
     [procedure, "address", "procedure"],
     [Cost, "price", "Cost"],
@@ -308,7 +325,8 @@ export const addprocedure = async (req, res) => {
     Cost,
     DepartmentID,
     createdBy: firstName + " " + lastName,
-    status:(Role === 'admin' ? true : false),
+    status: Role === "admin" ? true : false,
+    isApproved:  true ,
   };
 
   const procedureExists = await Procedure.findOne({
@@ -325,7 +343,7 @@ export const addprocedure = async (req, res) => {
     )
     .catch((err) => res.status(200).json({ message: "error", err }));
 };
-
+//==============================================================================================
 export const adddoctor = async (req, res) => {
   const {
     name,
@@ -339,7 +357,7 @@ export const adddoctor = async (req, res) => {
     address,
   } = req.body;
   const { firstName, lastName } = req.verifiedUser;
-  const Role = req?.verifiedUser?.role?.roleType
+  const Role = req?.verifiedUser?.role?.roleType;
 
   const validationErrors = await validateInputs([
     [name, "name", "name"],
@@ -365,7 +383,8 @@ export const adddoctor = async (req, res) => {
     email,
     address,
     createdBy: firstName + " " + lastName,
-    status:(Role === 'admin' ? true : false),
+    status: Role === "admin" ? true : false,
+    isApproved: Role === "admin" ? true : false,
   };
 
   const DoctorExists = await Doctor.findOne({
@@ -379,10 +398,11 @@ export const adddoctor = async (req, res) => {
     )
     .catch((err) => res.status(200).json({ message: "error", err }));
 };
-
+//==============================================================================================
 export const Get_add_doctor = async (req, res) => {
-  const Departments = await Department.find();
-  const Branches = await Branch.find();
+  const Departments = await Department.find({status:true,isApproved:true});
+  const Branches = await Branch.find({status:true,isApproved:true});
+  
 
   if (!Branches)
     return res
@@ -395,11 +415,11 @@ export const Get_add_doctor = async (req, res) => {
 
   return res.status(200).json({ status: true, Branches, Departments });
 };
-
+//==============================================================================================
 export const get_addOns = async (req, res) => {
-  const Departments = await Department.find();
-  const Branches = await Branch.find();
-  const roleType = await Role.find()
+  const Departments = await Department.find({status:true,isApproved:true});
+  const Branches = await Branch.find({status:true,isApproved:true});
+  const roleType = await Role.find();
 
   if (!Branches)
     return res
@@ -409,11 +429,14 @@ export const get_addOns = async (req, res) => {
     return res
       .status(400)
       .json({ message: "Departments Not available", status: false });
-  if(!roleType) return res.status(400).json({message:"Roles Not available"})    
+  if (!roleType)
+    return res.status(400).json({ message: "Roles Not available" });
 
-  return res.status(200).json({ status: true, Branches, Departments,roleType });
+  return res
+    .status(200)
+    .json({ status: true, Branches, Departments, roleType });
 };
-
+//==============================================================================================
 export const list_addOns = async (req, res) => {
   const results = await Promise.all([
     Branch.find(),
@@ -453,52 +476,117 @@ export const list_addOns = async (req, res) => {
     ...proc.toObject({ virtuals: true }),
     DepartmentName: DepartmentMap[proc.DepartmentID],
   }));
+
+  return res.status(200).json({
+    status: true,
+    Branches,
+    PaymentMethods,
+    Procedures,
+    Departments,
+    VisitorTypes,
+    PatientTypes,
+  });
+};
+//==============================================================================================
+export const list_doctors = async (req, res) => {
+  const results = await Promise.all([
+    Branch.find(),
+    Department.find(),
+    Doctor.find(),
+  ]);
+
+  const [Branches, departments, doctors] = results;
+  // Create a mapping from BranchID to BranchName
+  const branchMap = Branches.reduce((map, branch) => {
+    map[branch._id] = branch.branchName;
+    return map;
+  }, {});
+
+  const DepartmentMap = departments.reduce((map, departmnt) => {
+    map[departmnt._id] = departmnt.Name;
+    return map;
+  }, {});
+
+  // Add BranchName to each Department and Procedure
+  const Doctors = doctors.map((dr) => ({
+    ...dr.toObject({ virtuals: true }),
+    BranchName: branchMap[dr.BranchID],
+    DepartmentName: DepartmentMap[dr.DepartmentID],
+  }));
+
+  return res.status(200).json({
+    status: true,
+    Doctors,
+  });
+};
+//==============================================================================================
+export const updateStatus = async (req, res) => {
+  const {id,status} = req.body
+  const value = req.path.split("/")[1];
+  const collectionName = req.path.split("/")[1];
+  const Model = models[collectionName];
+
+  if (!Model) {
+    return res.status(404).send("Collection not found");
+  }
+
+  const updatedDocument = await Model.updateOne({ _id: id }, { $set: { status: status } });
  
-  return res
-    .status(200)
-    .json({
-      status: true,
-      Branches,
-      PaymentMethods,
-      Procedures,
-      Departments,
-      VisitorTypes,
-      PatientTypes,
-    });
+  if (updatedDocument.matchedCount === 0) {
+    return res.status(404).send("Document not found");
+  }
+  res.status(200).json({message:collectionName+"updated Succussfully",updatedDocument});
+ 
+};
+//==============================================================================================
+export const approve = async (req, res) => {
+  const {id} = req.body
+  const value = req.path.split("/")[1];
+  const collectionName = req.path.split("/")[1];
+  const Model = models[collectionName];
+
+  if (!Model) {
+    return res.status(404).send("Collection not found");
+  }
+
+  const updatedDocument = await Model.updateOne({ _id: id }, { $set: { isApproved:true} });
+ 
+  if (updatedDocument.matchedCount === 0) {
+    return res.status(404).send("Document not found");
+  }
+  res.status(200).json({message:collectionName+"updated Succussfully",updatedDocument});
+ 
 };
 
+//==============================================================================================
+export const set_alert = async (req,res) =>{ 
+  const { firstName, lastName } = req.verifiedUser;
+  const Role = req?.verifiedUser?.role?.roleType;
+  const {msg,type,endDate,startDate,BranchID}=req.body
+  const validationErrors = await validateInputs ([
+   [msg,"address","Message"],
+   [type,"name","Type"],
+   [BranchID,"BranchID","BranchID"],
+  ])
+  if (Object.keys(validationErrors).length > 0)
+   return res.status(400).json({ errors: validationErrors });
 
-export const list_doctors = async (req,res)=>{
-    const results = await Promise.all([
-        Branch.find(),
-        Department.find(),
-        Doctor.find()
-      ]);
-    
-      const [Branches,departments,doctors ] = results;
-      // Create a mapping from BranchID to BranchName
-      const branchMap = Branches.reduce((map, branch) => {
-        map[branch._id] = branch.branchName;
-        return map;
-      }, {});
-    
-      const DepartmentMap = departments.reduce((map, departmnt) => {
-        map[departmnt._id] = departmnt.Name;
-        return map;
-      }, {});
-    
-      // Add BranchName to each Department and Procedure
-      const Doctors = doctors.map((dr) => ({
-        ...dr.toObject({ virtuals: true }),
-        BranchName: branchMap[dr.BranchID],
-        DepartmentName: DepartmentMap[dr.DepartmentID],
-      }));
-    
-    
-      return res
-        .status(200)
-        .json({
-          status: true,
-          Doctors
-        });
-}
+   const newAlert ={
+    msg,
+    type,
+    startDate,
+    endDate,
+    BranchID,
+    createdBy: firstName + " " + lastName,
+    status: Role === "admin" ? true : false,
+    isApproved: Role === "admin" ? true : false,
+   }
+
+   Alert.create(newAlert).then((resp)=>{
+    return res.status(200).json({message:`New Message Added`,resp}) 
+   }).catch((err)=>{ 
+    return res.status(400).json(err)
+   })
+
+ }
+ //==============================================================================================

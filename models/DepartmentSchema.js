@@ -7,7 +7,9 @@ const DepartmentSchema = new mongoose.Schema({
   BranchID: { type: mongoose.Schema.Types.ObjectId, ref: Branch ,required:true },
   createdAt: { type: Date, default: Date.now },
   createdBy: { type: String, required: true, trim: true },
-  status:{type:Boolean,default:false}
+  status:{type:Boolean,default:false},
+  isApproved:{type:Boolean,default:false},
+  
 });
 await addCreatedAtIST(DepartmentSchema)
 

@@ -17,6 +17,7 @@ const employeeSchema = new Schema({
   role: { type: mongoose.Schema.Types.ObjectId, ref: Role },
   status: Boolean,
   createdAt: { type: Date, default: Date.now },
+  isApproved:{type:Boolean,default:false},
 });
 await addCreatedAtIST(employeeSchema)
 

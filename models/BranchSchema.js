@@ -22,7 +22,8 @@ const branchSchema = new Schema({
   createdBy:String,
   securityCredentials: securityCredentialsSchema,
   createdAt: { type: Date, default: Date.now },
-  status:{type:Boolean,default:false}
+  status:{type:Boolean,default:false},
+  isApproved:{type:Boolean,default:false},
 });
 await addCreatedAtIST(branchSchema)
 const Branch = mongoose.model("Branch", branchSchema);

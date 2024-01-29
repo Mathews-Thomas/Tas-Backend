@@ -8,7 +8,8 @@ const procedureSchema = new mongoose.Schema({
     DepartmentID: { type: mongoose.Schema.Types.ObjectId,  ref:Department },
     createdAt:{type:Date,default:Date.now}, 
     createdBy: { type: String, required: true, trim: true },
-    status:{type:Boolean,default:false}
+    status:{type:Boolean,default:false},
+    isApproved:{type:Boolean,default:false},
 })
 await addCreatedAtIST(procedureSchema)
 const Procedure = mongoose.model('Procedure', procedureSchema);

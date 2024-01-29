@@ -178,9 +178,9 @@ export const validateAddress = (value) => {
             error: "must be a string"
         }
     }
-    if(value.length > 200){
+    if(value.length > 500){
         return {
-            error: "must have less than 200 characters"
+            error: "must have less than 500 characters"
         }
     }
     return {}

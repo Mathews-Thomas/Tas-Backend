@@ -10,6 +10,7 @@ import Doctor from "../models/DoctorSchema.js";
 import Procedure from "../models/ProcedureSchema.js";
 import PatientInvoice from "../models/PatientInvoiceSchema.js";
 import PaymentMethod from "../models/PaymentMethodSchema.js";
+import Alert from "../models/AlertSchema.js"
 
 // ================================================
 export const employeeLogin = async (req, res) => {
@@ -391,3 +392,23 @@ export const getPatientInvoiceList = async (req, res) => {
     companyInfo,
   });
 };
+ export const get_alert = async (req,res)=>{
+   const { BranchID } = req.params;
+   const validationErrors = await validateInputs ([
+    [BranchID,"BranchID","BranchID"]
+   ])
+   if (Object.keys(validationErrors).length > 0)
+    return res.status(400).json({ errors: validationErrors });
+
+    const currentDate = new Date();
+    const alerts = await Alert.find({
+      BranchID,
+        startDate: { $lte: currentDate },
+        endDate: { $gte: currentDate }
+    });
+
+    if(!alerts) return res.status(404).send("Document not found");
+
+    res.status(200).send(alerts)
+
+ }

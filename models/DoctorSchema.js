@@ -9,20 +9,20 @@ const doctorSchema = new mongoose.Schema({
     trim: true,
   },
   age: Number,
-  Gender:String,
+  Gender: String,
   specialization: {
     type: String,
     required: true,
     trim: true,
   },
   email: {
-      type: String,
-      trim: true,
-    },
+    type: String,
+    trim: true,
+  },
   phone: {
-      type: String,
-      trim: true,
-    },
+    type: String,
+    trim: true,
+  },
   BranchID: {
     type: mongoose.Schema.Types.ObjectId,
     ref: Branch,
@@ -40,11 +40,12 @@ const doctorSchema = new mongoose.Schema({
     required: true,
     trim: true,
   },
-  status:{
-    type:Boolean,
-    required:true,
-    default:false
-  }
+  status: {
+    type: Boolean,
+    required: true,
+    default: false,
+  },
+  isApproved: { type: Boolean, default: false },
 });
 
 const Doctor = mongoose.model("Doctor", doctorSchema);
