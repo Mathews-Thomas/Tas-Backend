@@ -11,6 +11,7 @@ import Procedure from "../models/ProcedureSchema.js";
 import PatientInvoice from "../models/PatientInvoiceSchema.js";
 import PaymentMethod from "../models/PaymentMethodSchema.js";
 import Alert from "../models/AlertSchema.js"
+import { convertToIST } from "../Commonfn/ISTFormat.js";
 
 // ================================================
 export const employeeLogin = async (req, res) => {
@@ -29,7 +30,7 @@ export const employeeLogin = async (req, res) => {
     "securityCredentials.loginId": loginId,
   }).populate("role");
   if (!employee) return res.status(401).json({ err: "Username mismatched" });
-  if (!employee.status)
+  if (!employee.status || !employee.isApproved)
     return res
       .status(403)
       .json({
@@ -75,7 +76,7 @@ export const addPatient = async (req, res) => {
   if (Object.keys(validationErrors).length > 0)
     return res.status(400).json({ errors: validationErrors });
 
-  const existingPatient = await Patient.findOne({ Name, phone });
+  const existingPatient = await Patient.findOne({BranchID, Name, phone });
 
   if (existingPatient)
     return res.status(400).send({ errors: "Patient already exists." });
@@ -111,8 +112,8 @@ export const addPatient = async (req, res) => {
 // ================================================
 export const getAddPatient = async (req, res) => {
   const BranchID = req.params.BranchID;
-  const VisitorTypes = await VisitorType.find({ status: true });
-  const PatientTypes = await PatientType.find({ status: true });
+  const VisitorTypes = await VisitorType.find({ status: true ,isApproved:true});
+  const PatientTypes = await PatientType.find({ status: true,isApproved:true });
   const { branchName } = await Branch.findOne({ _id: BranchID });
   const PatientCout = await Patient.countDocuments({ BranchID });
   const nextPatientID = `TM${branchName[0]}${PatientCout + 1}`;
@@ -163,7 +164,7 @@ export const getPatientList = async (req, res) => {
       ],
     };
   }
-  const patients = await Patient.find(filter)
+  const patients = await Patient.find({BranchID,...filter})
     .sort({ createdAt: -1 })
     .limit(limit * 1)
     .skip((page - 1) * limit)
@@ -267,15 +268,15 @@ export const getInviuceDropdowns = async (req, res) => {
     branch,
     paymentMethods,
   ] = await Promise.all([
-    Doctor.find({ status: true }).populate("DepartmentID"),
+    Doctor.find({BranchID, status: true ,isApproved:true}).populate("DepartmentID"),
     Patient.findOne({ PatientID })
       .populate("VisitorTypeID")
       .populate("patientTypeID"),
-    Procedure.find({ status: true }),
-    VisitorType.find({ status: true }),
-    PatientType.find({ status: true }),
-    Branch.findOne({ _id: BranchID }),
-    PaymentMethod.find({ status: true }),
+    Procedure.find({ status: true ,isApproved:true}),
+    VisitorType.find({ status: true  ,isApproved:true}),
+    PatientType.find({ status: true  ,isApproved:true}),
+    Branch.findOne({ _id: BranchID  ,isApproved:true}),
+    PaymentMethod.find({ status: true  ,isApproved:true}),
   ]);
 
   if (!branch) return res.status(404).send({ errors: "Branch not found." });
@@ -399,12 +400,14 @@ export const getPatientInvoiceList = async (req, res) => {
    ])
    if (Object.keys(validationErrors).length > 0)
     return res.status(400).json({ errors: validationErrors });
-
-    const currentDate = new Date();
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
     const alerts = await Alert.find({
+      status:true,
       BranchID,
-        startDate: { $lte: currentDate },
-        endDate: { $gte: currentDate }
+        startDate: { $lte: today },
+        endDate: { $gte: today }
     });
 
     if(!alerts) return res.status(404).send("Document not found");

@@ -22,6 +22,7 @@ const models = {
   PatientType,
   Procedure,
   Doctor,
+  Alert
 };
 
 export const employeeRegister = async (req, res) => {
@@ -439,12 +440,13 @@ export const get_addOns = async (req, res) => {
 //==============================================================================================
 export const list_addOns = async (req, res) => {
   const results = await Promise.all([
-    Branch.find(),
-    PaymentMethod.find(),
-    Procedure.find(),
-    Department.find(),
-    VisitorType.find(),
-    PatientType.find(),
+    Branch.find().sort({createdAt:-1}),
+    PaymentMethod.find().sort({createdAt:-1}),
+    Procedure.find().sort({createdAt:-1}),
+    Department.find().sort({createdAt:-1}),
+    VisitorType.find().sort({createdAt:-1}),
+    PatientType.find().sort({createdAt:-1}),
+    Alert.find().sort({createdAt:-1}),
   ]);
 
   const [
@@ -454,6 +456,7 @@ export const list_addOns = async (req, res) => {
     departments,
     VisitorTypes,
     PatientTypes,
+    alerts
   ] = results;
   // Create a mapping from BranchID to BranchName
   const branchMap = Branches.reduce((map, branch) => {
@@ -471,6 +474,23 @@ export const list_addOns = async (req, res) => {
     ...dept.toObject({ virtuals: true }),
     BranchName: branchMap[dept.BranchID],
   }));
+  const convertTime = (date) => {
+    if (typeof date === 'string') {
+      return date.split('T')[0];
+    } 
+    else if (date instanceof Date) {
+      return date.toISOString().split('T')[0];
+    }
+  }
+  
+  const Alerts = alerts.map(alert => ({
+    ...alert.toObject({ virtuals: true }),
+    BranchName: branchMap[alert.BranchID],
+    endDate: convertTime(alert.endDate),
+    startDate: convertTime(alert.startDate)
+  }));
+  
+
 
   const Procedures = procedures.map((proc) => ({
     ...proc.toObject({ virtuals: true }),
@@ -485,6 +505,7 @@ export const list_addOns = async (req, res) => {
     Departments,
     VisitorTypes,
     PatientTypes,
+    Alerts
   });
 };
 //==============================================================================================
@@ -590,3 +611,10 @@ export const set_alert = async (req,res) =>{
 
  }
  //==============================================================================================
+
+export const get_Branches = async (req,res)=>{
+  const Branches = await Branch.find({status:true,isApproved:true}); 
+
+if (!Branches) return res.status(400).json({ message: "Branches Not added", status: false });
+return res.status(200).json({ status: true, Branches});    
+}

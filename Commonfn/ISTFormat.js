@@ -5,3 +5,7 @@ export const addCreatedAtIST = async (schema) => {
     });
     schema.set('toJSON', { virtuals: true });
 };
+export const convertToIST = async (Date) => {
+     return moment(Date).tz('Asia/Kolkata').format('YYYY-MM-DD');
+    
+};
