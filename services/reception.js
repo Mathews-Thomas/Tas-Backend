@@ -401,8 +401,7 @@ export const getPatientInvoiceList = async (req, res) => {
    if (Object.keys(validationErrors).length > 0)
     return res.status(400).json({ errors: validationErrors });
     
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const today = new Date(); 
     const alerts = await Alert.find({
       status:true,
       BranchID,

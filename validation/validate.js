@@ -14,7 +14,8 @@ import {
     verifyObjID,
     validateAge,
     validateGender,
-    ValidateBranchID
+    ValidateBranchID,
+    validateGST
 } from "./inputvalidation.js"
 
 const validators = {
@@ -34,6 +35,7 @@ const validators = {
     role:ValidateRoll,
     objectID:verifyObjID,
     BranchID:ValidateBranchID,
+    GST:validateGST
 }
 
 export async function validateInputs(inputs) {

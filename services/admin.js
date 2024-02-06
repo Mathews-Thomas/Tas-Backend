@@ -308,25 +308,30 @@ export const addPaymentMethod = async (req, res) => {
 };
 //==============================================================================================
 export const addprocedure = async (req, res) => {
-  const { procedure, description, Cost, DepartmentID } = req.body;
-  const { firstName, lastName } = req.verifiedUser;
+  const { procedure, description, GST,gstOption,HSNCode,BranchID, DepartmentID } = req.body; 
+  const { firstName, lastName } = req.verifiedUser; 
   const Role = req?.verifiedUser?.role?.roleType;
   const validationErrors = await validateInputs([
-    [procedure, "address", "procedure"],
-    [Cost, "price", "Cost"],
+    [procedure, "address", "procedure"], 
     [DepartmentID, "objectID", "DepartmentID"],
     [description, "address", "description"],
+    [(gstOption === 'non-exception' ) && [GST, "GST", "GST"] ],
+    [HSNCode, "name", "HSNCode"],
+    [BranchID, "BranchID", "Branch ID"],
   ]);
   if (Object.keys(validationErrors).length > 0)
     return res.status(400).json({ errors: validationErrors });
 
   const newProcedure = {
+    BranchID,
+    DepartmentID,
     procedure,
     description,
-    Cost,
-    DepartmentID,
+    GST:GST ? GST : 0,
+    gstOption,
+    HSNCode,
     createdBy: firstName + " " + lastName,
-    status: Role === "admin" ? true : false,
+    status:  true ,
     isApproved:  true ,
   };
 
@@ -401,7 +406,7 @@ export const adddoctor = async (req, res) => {
 };
 //==============================================================================================
 export const Get_add_doctor = async (req, res) => {
-  const Departments = await Department.find({status:true,isApproved:true});
+  const Departments = await Department.find({status:true,isApproved:true}).populate('BranchID')
   const Branches = await Branch.find({status:true,isApproved:true});
   
 
@@ -417,8 +422,8 @@ export const Get_add_doctor = async (req, res) => {
   return res.status(200).json({ status: true, Branches, Departments });
 };
 //==============================================================================================
-export const get_addOns = async (req, res) => {
-  const Departments = await Department.find({status:true,isApproved:true});
+export const get_addOns = async (req, res) => {  
+  const Departments = await Department.find({status:true,isApproved:true}).populate('BranchID')
   const Branches = await Branch.find({status:true,isApproved:true});
   const roleType = await Role.find();
 
@@ -495,8 +500,9 @@ export const list_addOns = async (req, res) => {
   const Procedures = procedures.map((proc) => ({
     ...proc.toObject({ virtuals: true }),
     DepartmentName: DepartmentMap[proc.DepartmentID],
-  }));
-
+    BranchName:branchMap[proc.BranchID]
+    
+  })); 
   return res.status(200).json({
     status: true,
     Branches,
@@ -591,12 +597,13 @@ export const set_alert = async (req,res) =>{
   ])
   if (Object.keys(validationErrors).length > 0)
    return res.status(400).json({ errors: validationErrors });
-
+  const expiry = new Date(endDate)
+  expiry.setUTCHours(23, 59, 59, 999);
    const newAlert ={
     msg,
     type,
     startDate,
-    endDate,
+    endDate:expiry,
     BranchID,
     createdBy: firstName + " " + lastName,
     status: Role === "admin" ? true : false,

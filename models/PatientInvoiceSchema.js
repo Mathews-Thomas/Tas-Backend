@@ -49,6 +49,7 @@ const itemsSchema = new mongoose.Schema({
 
 const patientInvoiceSchema = new mongoose.Schema({
     invoiceID:{type:String,required:true},
+    
     BranchID: {
         type: mongoose.Schema.Types.ObjectId,
         required: true,

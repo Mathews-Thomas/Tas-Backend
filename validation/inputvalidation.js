@@ -205,6 +205,24 @@ export const validatePrice = (price) => {
     }
     return {}
 }
+export const validateGST = (value) => {
+    if(typeof value !== 'number'){
+        return {
+            error: "must be a number"
+        }
+    }
+    if(value < 0){
+        return {
+            error: "must be a positive number"
+        }
+    }
+    if(value > 100){
+        return {
+            error: "must be less than 100"
+        }
+    }
+    return {}
+}
 
 export const validateGender = (gender) => {
     if (typeof gender !== 'string') {
