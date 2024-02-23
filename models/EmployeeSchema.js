@@ -11,12 +11,16 @@ const employeeSchema = new Schema({
   },
   firstName: String,
   lastName: String,
+  age:Number,
+  Gender:String,
+  address:String,
   email: { type: String, required: true },
   phone: String,
   designation: String, 
   role: { type: mongoose.Schema.Types.ObjectId, ref: Role },
   status: Boolean,
   createdAt: { type: Date, default: Date.now },
+  createdBy:String,
   isApproved:{type:Boolean,default:false},
 });
 await addCreatedAtIST(employeeSchema)

@@ -2,6 +2,7 @@ import mongoose from 'mongoose'
 import Department from './DepartmentSchema.js';
 import { addCreatedAtIST } from '../Commonfn/ISTFormat.js';
 import Branch from './BranchSchema.js';
+
 const procedureSchema = new mongoose.Schema({
     DepartmentID: { type: mongoose.Schema.Types.ObjectId,  ref:Department },
     BranchID: { type: mongoose.Schema.Types.ObjectId,  ref:Branch },
@@ -21,3 +22,4 @@ await addCreatedAtIST(procedureSchema)
 const Procedure = mongoose.model('Procedure', procedureSchema);
 
 export default Procedure;
+            

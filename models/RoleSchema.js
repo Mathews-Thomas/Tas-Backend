@@ -5,7 +5,7 @@ const RoleSchema = new mongoose.Schema({
     name: String,
     roleType:{type:String,enum: ['admin', 'user', 'guest']},
     permissions: [String],  
-    createdBy: { type: String, required: true, trim: true },
+    createdBy: { type: String, trim: true },
     createdAt: { type: Date, default: Date.now },
     status:{type:Boolean,default:false}, 
 });

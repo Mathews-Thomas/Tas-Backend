@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import Branch from "./BranchSchema.js";
 import Department from "./DepartmentSchema.js";
+import Procedure from "./ProcedureSchema.js";
 
 const doctorSchema = new mongoose.Schema({
   name: {
@@ -23,6 +24,10 @@ const doctorSchema = new mongoose.Schema({
     type: String,
     trim: true,
   },
+  procedureIds: [{ 
+    type: mongoose.Schema.Types.ObjectId,
+    ref: Procedure,
+  }],
   BranchID: {
     type: mongoose.Schema.Types.ObjectId,
     ref: Branch,
@@ -32,6 +37,7 @@ const doctorSchema = new mongoose.Schema({
     ref: Department,
   },
   createdAt: {
+
     type: Date,
     default: Date.now,
   },

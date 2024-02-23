@@ -1,13 +1,13 @@
 import express from "express"
 import {serviceHandler} from "../../services/serviceHandler.js"
-import { AddRole, BranchRegister,set_alert, addDepartment,updateStatus,get_Branches, addPatientType,list_doctors,Get_add_doctor,list_addOns ,get_addOns,adddoctor, addPaymentMethod,addprocedure, addVisitorType, employeeRegister, approve } from "../../services/admin.js"
+import { report_filter,AddRole, BranchRegister,set_alert,report_filter_options, addDepartment,updateStatus,get_Branches, addPatientType,list_doctors,Get_add_doctor,list_addOns ,get_addOns,adddoctor, addPaymentMethod,addprocedure, addVisitorType, employeeRegister, approve } from "../../services/admin.js"
 import auth from "../../middleware/EmployeeAuth.js"
 
 const router = express.Router()
 //- /admin/ 
-router.post("/employee-register",auth() , serviceHandler(employeeRegister)) //admin 
+router.post("/employee-register" , auth(), serviceHandler(employeeRegister)) //admin 
 router.post("/branch-register",auth(), serviceHandler(BranchRegister))  // admin
-router.post("/add-New-Role",auth(),serviceHandler(AddRole)) //admin
+router.post("/add-New-Role" ,serviceHandler(AddRole)) //admin
 router.post("/add-Department",auth(),serviceHandler(addDepartment)) 
 router.post("/add-patientType",auth(),serviceHandler(addPatientType))
 router.post("/add-visitorType",auth(),serviceHandler(addVisitorType))
@@ -38,6 +38,9 @@ router.put("/Department/approve",auth(),serviceHandler(approve))
 router.put("/VisitorType/approve",auth(),serviceHandler(approve))
 
 router.get("/Get-Branches",auth(),serviceHandler(get_Branches))
+router.get('/report/filter', serviceHandler(report_filter))
+router.get('/report/filterOptions', serviceHandler(report_filter_options))
+
 
 
 const adminRouter = router

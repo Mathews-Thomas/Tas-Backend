@@ -6,7 +6,7 @@ const auth = (requiredPermissions = []) => {
   return async (req, res, next) => {
     try {
       const token =
-        req.cookies[process.env.JWT_TOKEN_NAME] ?? req.headers.authorization;
+        req.cookies[process.env.JWT_TOKEN_NAME] ?? req.headers.authorization; 
       if (!token) return res.status(401).send({ error: "Token is required" });
 
       jwt.verify(token, process.env.AUTH_SECRET_KEY, async (error, data) => {

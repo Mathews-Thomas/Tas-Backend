@@ -272,7 +272,7 @@ export const getInviuceDropdowns = async (req, res) => {
     Patient.findOne({ PatientID })
       .populate("VisitorTypeID")
       .populate("patientTypeID"),
-    Procedure.find({ status: true ,isApproved:true}),
+    Procedure.find({ status: true ,isApproved:true,BranchID}),
     VisitorType.find({ status: true  ,isApproved:true}),
     PatientType.find({ status: true  ,isApproved:true}),
     Branch.findOne({ _id: BranchID  ,isApproved:true}),
@@ -282,10 +282,11 @@ export const getInviuceDropdowns = async (req, res) => {
   if (!branch) return res.status(404).send({ errors: "Branch not found." });
 
   const PatientInvoiceCount = await PatientInvoice.countDocuments({ BranchID });
-  const nextInvoceID = `INV${branch.branchName[0]}${PatientInvoiceCount + 1}`;
+  const nextInvoceID = `INV${branch.branchName[0].toUpperCase()}${PatientInvoiceCount + 1}`;
 
   // Check for empty results
-  if (
+
+   if (
     !Doctors.length ||
     !Procedures.length ||
     !VisitorTypes.length ||
@@ -377,7 +378,10 @@ export const getPatientInvoiceList = async (req, res) => {
   const patientInvoice = await PatientInvoice.find(filter)
     .populate("doctorID")
     .populate("patientID")
-    .populate("DepartmentID")
+    .populate("DepartmentID").populate({
+      path: 'items.ProcedureID', // Specify the path to the field you want to populate
+      model: 'Procedure' // Specify the model name associated with the ObjectId
+    })
     .sort({ createdAt: -1 })
     .limit(limit * 1)
     .skip((page - 1) * limit)
@@ -385,13 +389,13 @@ export const getPatientInvoiceList = async (req, res) => {
 
   // Get the total number of patients to calculate total pages
   const count = await PatientInvoice.countDocuments(filter);
-
   res.status(200).json({
     patientInvoice,
     totalPages: Math.ceil(count / limit),
     currentPage: page,
     companyInfo,
   });
+
 };
  export const get_alert = async (req,res)=>{
    const { BranchID } = req.params;

@@ -14,20 +14,28 @@ const itemsSchema = new mongoose.Schema({
         required: true,
         ref: Procedure
     },
+    procedure:{
+        type:String,
+        required:true
+    },
     description:{
+        type:String
+    },
+    quantity:{
+        type:Number,
+        required:true
+    },
+    unitPrice:{
+        type:Number,
+        required:true
+    },
+    discountType:{
         type:String
     },
     discount:{
         type:Number
     },
-    discountType:{
-        type:String
-    },
-    procedure:{
-        type:String,
-        required:true
-    },
-    quantity:{
+    totalAmount:{
         type:Number,
         required:true
     },
@@ -35,20 +43,24 @@ const itemsSchema = new mongoose.Schema({
         type:Number,
         required:true
     },
-    totalAmount:{
+    GST:{
         type:Number,
         required:true
     },
-    unitPrice:{
+    gstAmount:{
         type:Number,
         required:true
-    }
+    },
+    baseAmount:{
+        type:Number,
+        required:true
+    },
 
 })
 
 
 const patientInvoiceSchema = new mongoose.Schema({
-    invoiceID:{type:String,required:true},
+    invoiceID:{type:String,required:true,},
     
     BranchID: {
         type: mongoose.Schema.Types.ObjectId,
