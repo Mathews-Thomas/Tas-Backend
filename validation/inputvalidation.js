@@ -173,6 +173,11 @@ export const loginId = (loginId) => {
 
 
 export const validateAddress = (value) => {
+    if(value.trim().length === 0){
+        return {
+            error: "must not be empty"
+        }
+    }
     if(typeof value !== 'string'){
         return {
             error: "must be a string"
@@ -211,7 +216,7 @@ export const validateGST = (value) => {
             error: "must be a number"
         }
     }
-    if(value < 0){
+    if(value > 1){
         return {
             error: "must be a positive number"
         }

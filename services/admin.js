@@ -388,8 +388,7 @@ export const adddoctor = async (req, res) => {
     [phone, "phone", "phone"],
   ]);
   if (Object.keys(validationErrors).length > 0)
-    return res.status(400).json({ errors: validationErrors });
-console.log(ProcedureIds,"kjhsdfkljh")
+    return res.status(400).json({ errors: validationErrors }); 
   const newDoctor = {
     name,
     age,
@@ -469,6 +468,7 @@ export const get_addOns = async (req, res) => {
 export const list_addOns = async (req, res) => {
   const results = await Promise.all([
     Branch.find().sort({ createdAt: -1 }),
+    Employee.find().sort({ createdAt: -1 }),
     PaymentMethod.find().sort({ createdAt: -1 }),
     Procedure.find().sort({ createdAt: -1 }),
     Department.find().sort({ createdAt: -1 }),
@@ -477,7 +477,7 @@ export const list_addOns = async (req, res) => {
     Alert.find().sort({ createdAt: -1 }),
   ]);
 
-  const [Branches,PaymentMethods,procedures,departments,VisitorTypes,PatientTypes,alerts] = results;
+  const [Branches,Employees,PaymentMethods,procedures,departments,VisitorTypes,PatientTypes,alerts] = results;
   const branchMap = Branches.reduce((map, branch) => {
     map[branch._id] = branch.branchName;
     return map;
@@ -522,6 +522,7 @@ export const list_addOns = async (req, res) => {
     VisitorTypes,
     PatientTypes,
     Alerts,
+    Employees
   });
 };
 //==============================================================================================
@@ -605,7 +606,6 @@ export const approve = async (req, res) => {
     updatedDocument,
   });
 };
-
 //==============================================================================================
 export const set_alert = async (req, res) => {
   const { firstName, lastName } = req.verifiedUser;
@@ -741,7 +741,7 @@ let matchFilters = {
           {
             $group: {
               _id: "$items.GST",
-              totalAmountToBePaid: { $sum: "$amountToBePaid" },
+              totalAmountToBePaid: { $sum: "$items.amountToBePaid" },
               totalGstAmount: { $sum: "$items.gstAmount" },
               totalBaseAmount: { $sum: "$items.baseAmount" },
               totalCount: { $sum: 1 },
@@ -810,3 +810,337 @@ export const report_filter_options = async (req, res) => {
   });
 
 };
+//==============================================================================================
+
+export const Edit = async (req, res) => {
+  const { _id,type,description } = req.body;
+  const value = req.path.split("/")[1];
+  const collectionName = req.path.split("/")[1];
+  const Model = models[collectionName]; 
+
+
+  if (!Model) {
+    return res.status(404).send("Collection not found");
+  }
+
+  const validationErrors = await validateInputs([
+    [type, "name", "type"],
+    [description, "address", "description"],
+  ]);
+
+  if (Object.keys(validationErrors).length > 0)
+  return res.status(400).json({ errors: validationErrors });
+
+  const data = {
+    type,
+    description
+  }
+  const updatedDocument = await Model.updateOne(
+    { _id},
+    { $set: data }
+  );
+
+  if (updatedDocument.matchedCount === 0) {
+    return res.status(404).send("Document not found");
+  }
+  res.status(200).json({
+    message: collectionName + "updated Succussfully",
+    updatedDocument,
+  });
+};
+//==============================================================================================
+
+export const ProcedureEdit = async (req, res) => {
+  const { _id,procedure,description,gstOption,HSNCode,GST } = req.body;
+  const value = req.path.split("/")[1];
+  const collectionName = req.path.split("/")[1];
+  const Model = models[collectionName];  
+
+  if (!Model) {
+    return res.status(404).send("Collection not found");
+  } 
+
+  const validationErrors = await validateInputs([
+    [procedure, "address", "procedure"], 
+    [description, "address", "description"],
+    [gstOption === "non-exception" && [GST, "GST", "GST"]],
+    [HSNCode, "name", "HSNCode"], 
+  ]);
+  if (Object.keys(validationErrors).length > 0)
+    return res.status(400).json({ errors: validationErrors });
+
+  const editedProcedure = {
+    procedure ,
+    description ,
+    gstOption ,
+    HSNCode ,
+    GST
+  }
+
+
+  const updatedDocument = await Model.updateOne(
+    { _id },
+    { $set: editedProcedure }
+  );
+
+  if (updatedDocument.matchedCount === 0) {
+    return res.status(404).send("Document not found");
+  }
+  res.status(200).json({
+    message: collectionName + "updated Succussfully",
+    updatedDocument,
+  });
+};
+//==============================================================================================
+
+export const AlertEdit = async (req, res) => {
+  const { _id,msg,type,startDate,endDate } = req.body;
+  const value = req.path.split("/")[1];
+  const collectionName = req.path.split("/")[1];
+  const Model = models[collectionName]; 
+  
+  const validationErrors = await validateInputs([
+    [msg, "address", "Message"],
+    [type, "name", "Type"]
+  ]); 
+
+if (Object.keys(validationErrors).length > 0)
+  return res.status(400).json({ errors: validationErrors });
+
+
+const EditedAlert ={
+  msg, 
+  type ,
+  startDate ,
+  endDate
+} 
+
+  if (!Model) {
+    return res.status(404).send("Collection not found");
+  }
+
+  const updatedDocument = await Model.updateOne(
+    { _id },
+    { $set: EditedAlert }
+  );
+
+  if (updatedDocument.matchedCount === 0) {
+    return res.status(404).send("Document not found");
+  }
+  res.status(200).json({
+    message: collectionName + "updated Succussfully",
+    updatedDocument,
+  });
+};
+//==============================================================================================
+
+export const departmntEdit = async (req, res) => {
+  const { _id,Name} = req.body;
+  const value = req.path.split("/")[1];
+  const collectionName = req.path.split("/")[1];
+  const Model = models[collectionName]; 
+
+
+  if (!Model) {
+    return res.status(404).send("Collection not found");
+  }
+
+  const validationErrors = await validateInputs([ 
+    [Name, "name", "Department Name"]
+  ]); 
+
+if (Object.keys(validationErrors).length > 0)
+  return res.status(400).json({ errors: validationErrors });
+
+
+  const editedDepartment = {
+    Name,
+  }
+  const updatedDocument = await Model.updateOne(
+    { _id },
+    { $set: editedDepartment}
+  );
+
+  if (updatedDocument.matchedCount === 0) {
+    return res.status(404).send("Document not found");
+  }
+  res.status(200).json({
+    message: collectionName + "updated Succussfully",
+    updatedDocument,
+  });
+};
+
+export const BranchEdit = async (req, res) => {
+  const { _id, branchName, address, city, state, country, pincode, phone, email } = req.body;
+  const collectionName = req.path.split("/")[1];
+  const Model = models[collectionName]; 
+
+  const validationErrors = await validateInputs([
+    [branchName, "name", "branchName"],
+    [address, "address", "address"],
+    [city, "name", "city"],
+    [state, "name", "state"],
+    [country, "name", "country"],
+    [pincode, "zip", "pincode"],
+    [phone, "phone", "Phone Number"],
+    [email, "email", "email"], 
+  ]);
+
+  if (Object.keys(validationErrors).length > 0) {
+    return res.status(400).json({ errors: validationErrors });
+  }
+
+  const editedBranch = { branchName, address, city, state, country, pincode, phone, email };
+
+  if (!Model) {
+    return res.status(404).send("Collection not found");
+  }
+
+  const updatedDocument = await Model.updateOne({ _id }, { $set: editedBranch });
+
+  if (updatedDocument.matchedCount === 0) {
+    return res.status(404).send("Document not found");
+  }
+  res.status(200).json({
+    message: "Branch updated successfully",
+    updatedDocument,
+  });
+};
+
+export const EmployeeEdit = async (req, res) => {
+  const { _id, firstName, lastName, email, phone, designation,  age, Gender, address } = req.body;
+  const collectionName = req.path.split("/")[1];
+  const Model = models[collectionName]; 
+
+  const validationErrors = await validateInputs([
+    [firstName, "name", "firstName"],
+    [lastName, "name", "lastName"],
+    [email, "email", "email"],
+    [phone, "phone", "phone"],
+    [designation, "name", "designation"],
+    [age, "age", "Age"],
+    [Gender, "Gender", "gender"],
+    [address, "address", "Address"],
+  ]);
+
+  if (Object.keys(validationErrors).length > 0) {
+    return res.status(400).json({ errors: validationErrors });
+  }
+
+  const editedEmployee = { firstName, lastName, email, phone, designation,  age, Gender, address };
+
+  if (!Model) {
+    return res.status(404).send("Collection not found");
+  }
+
+  const updatedDocument = await Model.updateOne({ _id }, { $set: editedEmployee });
+
+  if (updatedDocument.matchedCount === 0) {
+    return res.status(404).send("Document not found");
+  }
+  res.status(200).json({
+    message: "Employee updated successfully",
+    updatedDocument,
+  });
+};
+
+export const PaymentMethodEdit = async (req, res) => {
+  const { _id, Method } = req.body;
+ const collectionName = req.path.split("/")[1];
+  const Model = models[collectionName]; 
+
+  if (!Model) {
+    return res.status(404).send("Collection not found");
+  } 
+  const validationErrors = await validateInputs([
+    [Method, "name", "Method"], 
+  ]); 
+
+  if (Object.keys(validationErrors).length > 0) {
+    return res.status(400).json({ errors: validationErrors });
+  }
+
+  const editedPaymentMethod = { Method };
+ 
+  const updatedDocument = await Model.updateOne({ _id }, { $set: editedPaymentMethod });
+
+  if (updatedDocument.matchedCount === 0) {
+    return res.status(404).send("Document not found");
+  }
+  res.status(200).json({
+    message: "Payment method updated successfully",
+    updatedDocument,
+  });
+};
+
+
+export const editDoctor = async (req, res) => {
+  const {
+    _id,  
+    name,
+    age,
+    Gender,
+    specialization,
+    phone,
+    email,
+    BranchID,
+    DepartmentID,
+    address,
+    procedureIds,
+  } = req.body;
+ 
+  const { firstName, lastName } = req.verifiedUser;
+  const Role = req?.verifiedUser?.role?.roleType;
+
+  const validationErrors = await validateInputs([
+    [name, "name", "Name"],
+    [age, "age", "Age"],
+    [Gender, "gender", "Gender"],
+    [specialization, "address", "Specialization"],
+    [phone, "phone", "Phone"],
+    [email, "email", "Email"],
+    [address, "address", "Address"],
+    [DepartmentID, "objectID", "DepartmentID"],
+    [BranchID, "objectID", "BranchID"], 
+  ]);
+
+  if (Object.keys(validationErrors).length > 0)
+    return res.status(400).json({ errors: validationErrors });
+
+  const updateDoctor = {
+    name,
+    age,
+    Gender,
+    specialization,
+    DepartmentID,
+    BranchID,
+    procedureIds: [...procedureIds],
+    phone,
+    email,
+    address,
+    // updatedBy: firstName + " " + lastName, // Changed to updatedBy
+    // status: Role === "admin" ? true : false,
+    // isApproved: Role === "admin" ? true : false,
+  };
+
+  try {
+    const updatedDoctor = await Doctor.findByIdAndUpdate(
+      _id,
+      updateDoctor,
+      { new: true } // Option to return the document after update
+    );
+
+    if (!updatedDoctor) {
+      return res.status(404).json({ message: "Doctor not found" });
+    }
+
+    res.status(200).json({ message: "Doctor updated successfully", updatedDoctor });
+  } catch (error) {
+    res.status(500).json({ message: "Error updating doctor", error });
+  }
+};
+
+
+
+
+
