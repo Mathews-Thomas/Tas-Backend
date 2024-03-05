@@ -418,3 +418,17 @@ export const getPatientInvoiceList = async (req, res) => {
     res.status(200).send(alerts)
 
  }
+
+export const get_branch =async (req,res)=>{
+  const { BranchID } = req.params;
+  const validationErrors = await validateInputs ([
+   [BranchID,"BranchID","BranchID"]
+  ])
+  if (Object.keys(validationErrors).length > 0)
+   return res.status(400).json({ errors: validationErrors });
+
+  const branch = await Branch.findById({_id:BranchID},{securityCredentials:0})
+  if(!branch) return res.status(404).send("branch not found");
+
+    res.status(200).send(branch)
+}
