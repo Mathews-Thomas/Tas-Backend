@@ -1,6 +1,6 @@
 import express from "express"
 import {serviceHandler} from "../../services/serviceHandler.js"
-import { report_filter,AddRole, BranchRegister,set_alert,report_filter_options,Edit, addDepartment,updateStatus,get_Branches, addPatientType,list_doctors,Get_add_doctor,list_addOns ,get_addOns,adddoctor, addPaymentMethod,addprocedure, addVisitorType, employeeRegister, approve, AlertEdit, ProcedureEdit, departmntEdit, BranchEdit, EmployeeEdit, PaymentMethodEdit, editDoctor } from "../../services/admin.js"
+import { report_filter,AddRole,get_task,delete_task,edit_task,set_task,updatetaskStatus, BranchRegister,set_alert,report_filter_options,Edit, addDepartment,updateStatus,get_Branches, addPatientType,list_doctors,Get_add_doctor,list_addOns ,get_addOns,adddoctor, addPaymentMethod,addprocedure, addVisitorType, employeeRegister, approve, AlertEdit, ProcedureEdit, departmntEdit, BranchEdit, EmployeeEdit, PaymentMethodEdit, editDoctor } from "../../services/admin.js"
 import auth from "../../middleware/EmployeeAuth.js"
 
 const router = express.Router()
@@ -14,6 +14,7 @@ router.post("/add-visitorType",auth(),serviceHandler(addVisitorType))
 router.post("/add-paymentMethod",auth(),serviceHandler(addPaymentMethod))
 router.post("/add-procedure",auth(),serviceHandler(addprocedure))
 router.post("/add-doctor",auth(),serviceHandler(adddoctor))
+
 router.get("/add-doctor",auth(),serviceHandler(Get_add_doctor))
 router.get("/get-addOns",auth(),serviceHandler(get_addOns))
 router.get("/list-addOns",auth(),serviceHandler(list_addOns))
@@ -55,6 +56,11 @@ router.get("/Get-Branches",auth(),serviceHandler(get_Branches))
 router.get('/report/filter', serviceHandler(report_filter))
 router.get('/report/filterOptions', serviceHandler(report_filter_options))
 
+router.delete("/task/delete-task", auth(), serviceHandler(delete_task));
+router.put("/task/updatetaskStatus", auth(), serviceHandler(updatetaskStatus));
+router.put("/task/edit-task", auth(), serviceHandler(edit_task));
+router.post("/set-task", auth(), serviceHandler(set_task));
+router.get("/get-task", auth(), serviceHandler(get_task));
 
 
 const adminRouter = router

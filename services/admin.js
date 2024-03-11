@@ -157,7 +157,7 @@ export const BranchRegister = async (req, res) => {
 };
 //==============================================================================================
 export const AddRole = async (req, res) => {
-  const { name, permissions, roleType,createdBy } = req.body;
+  const { name, permissions, roleType, createdBy } = req.body;
   const validationErrors = await validateInputs([
     [name, "name", "Empoyee Position"],
     [roleType, "name", "Role Type"],
@@ -172,7 +172,7 @@ export const AddRole = async (req, res) => {
   if (NameExist)
     return res.status(400).json({ errors: "Role Name is already existed" });
 
-  const NewRole = Role.create({ name, permissions, roleType,createdBy });
+  const NewRole = Role.create({ name, permissions, roleType, createdBy });
   return res.status(200).json(NewRole);
 };
 //==============================================================================================
@@ -190,7 +190,7 @@ export const addDepartment = async (req, res) => {
   let newDepartment = {
     Name,
     BranchID,
-    createdBy: firstName + " " + lastName ,
+    createdBy: firstName + " " + lastName,
     status: Role === "admin" ? true : false,
     isApproved: Role === "admin" ? true : false,
   };
@@ -372,7 +372,7 @@ export const adddoctor = async (req, res) => {
     BranchID,
     DepartmentID,
     address,
-    ProcedureIds
+    ProcedureIds,
   } = req.body;
   const { firstName, lastName } = req.verifiedUser;
   const Role = req?.verifiedUser?.role?.roleType;
@@ -388,7 +388,7 @@ export const adddoctor = async (req, res) => {
     [phone, "phone", "phone"],
   ]);
   if (Object.keys(validationErrors).length > 0)
-    return res.status(400).json({ errors: validationErrors }); 
+    return res.status(400).json({ errors: validationErrors });
   const newDoctor = {
     name,
     age,
@@ -396,7 +396,7 @@ export const adddoctor = async (req, res) => {
     specialization,
     DepartmentID,
     BranchID,
-    procedureIds:[...ProcedureIds],
+    procedureIds: [...ProcedureIds],
     phone,
     email,
     address,
@@ -405,7 +405,6 @@ export const adddoctor = async (req, res) => {
     isApproved: Role === "admin" ? true : false,
   };
 
- 
   const DoctorExists = await Doctor.findOne({
     name: new RegExp("^" + name.trim() + "$", "i"),
   });
@@ -422,9 +421,13 @@ export const Get_add_doctor = async (req, res) => {
   const Departments = await Department.find({
     status: true,
     isApproved: true,
-  }).populate("BranchID").sort({BranchID:1})
-  const Branches = await Branch.find({ status: true, isApproved: true })
-  const Procedures = await Procedure.find({ status: true, isApproved: true }).populate("BranchID").sort({BranchID:1})
+  })
+    .populate("BranchID")
+    .sort({ BranchID: 1 });
+  const Branches = await Branch.find({ status: true, isApproved: true });
+  const Procedures = await Procedure.find({ status: true, isApproved: true })
+    .populate("BranchID")
+    .sort({ BranchID: 1 });
   if (!Branches)
     return res
       .status(400)
@@ -438,7 +441,9 @@ export const Get_add_doctor = async (req, res) => {
       .status(400)
       .json({ message: "Procedures Not available", status: false });
 
-  return res.status(200).json({ status: true, Branches, Departments,Procedures });
+  return res
+    .status(200)
+    .json({ status: true, Branches, Departments, Procedures });
 };
 //==============================================================================================
 export const get_addOns = async (req, res) => {
@@ -447,7 +452,7 @@ export const get_addOns = async (req, res) => {
     isApproved: true,
   }).populate("BranchID");
   const Branches = await Branch.find({ status: true, isApproved: true });
-  const roleType = await Role.find({status: true});
+  const roleType = await Role.find({ status: true });
 
   if (!Branches)
     return res
@@ -477,7 +482,16 @@ export const list_addOns = async (req, res) => {
     Alert.find().sort({ createdAt: -1 }),
   ]);
 
-  const [Branches,Employees,PaymentMethods,procedures,departments,VisitorTypes,PatientTypes,alerts] = results;
+  const [
+    Branches,
+    Employees,
+    PaymentMethods,
+    procedures,
+    departments,
+    VisitorTypes,
+    PatientTypes,
+    alerts,
+  ] = results;
   const branchMap = Branches.reduce((map, branch) => {
     map[branch._id] = branch.branchName;
     return map;
@@ -522,41 +536,79 @@ export const list_addOns = async (req, res) => {
     VisitorTypes,
     PatientTypes,
     Alerts,
-    Employees
+    Employees,
   });
 };
 //==============================================================================================
 export const list_doctors = async (req, res) => {
-  const results = await Promise.all([
-    Branch.find(),
-    Department.find(),
-    Doctor.find(),
-  ]);
+  const page = parseInt(req.query.page, 10) || 1;
+  const limit = parseInt(req.query.limit, 10) || 10;
+  const skip = (page - 1) * limit;
 
-  const [Branches, departments, doctors] = results;
-  // Create a mapping from BranchID to BranchName
-  const branchMap = Branches.reduce((map, branch) => {
-    map[branch._id] = branch.branchName;
-    return map;
-  }, {});
+  const searchQuery = req.query.search
+    ? {
+        // Assuming you want to search by doctor's name and specialization, adjust as needed
+        $or: [
+          { name: new RegExp(req.query.search, "i") }, // 'i' for case-insensitive
+          { specialization: new RegExp(req.query.search, "i") },
+        ],
+      }
+    : {};
 
-  const DepartmentMap = departments.reduce((map, departmnt) => {
-    map[departmnt._id] = departmnt.Name;
-    return map;
-  }, {});
+  try {
+    // Fetch branches and departments without pagination
+    const branchesPromise = Branch.find();
+    const departmentsPromise = Department.find();
 
-  // Add BranchName to each Department and Procedure
-  const Doctors = doctors.map((dr) => ({
-    ...dr.toObject({ virtuals: true }),
-    BranchName: branchMap[dr.BranchID],
-    DepartmentName: DepartmentMap[dr.DepartmentID],
-  }));
+    // Apply pagination only to the Doctor.find() query
+    const doctorsPromise = Doctor.find(searchQuery)
+      .populate({ path: "procedureIds", select: "procedure _id" })
+      .skip(skip)
+      .limit(limit);
 
-  return res.status(200).json({
-    status: true,
-    Doctors,
-  });
+    // Fetch the total count of doctors for pagination info
+    const countPromise = Doctor.countDocuments();
+
+    const [Branches, departments, doctors, totalDoctors] = await Promise.all([
+      branchesPromise,
+      departmentsPromise,
+      doctorsPromise,
+      countPromise,
+    ]);
+
+    const branchMap = Branches.reduce((map, branch) => {
+      map[branch._id] = branch.branchName;
+      return map;
+    }, {});
+
+    const DepartmentMap = departments.reduce((map, departmnt) => {
+      map[departmnt._id] = departmnt.Name;
+      return map;
+    }, {});
+
+    const Doctors = doctors.map((dr) => ({
+      ...dr.toObject({ virtuals: true }),
+      BranchName: branchMap[dr.BranchID],
+      DepartmentName: DepartmentMap[dr.DepartmentID],
+    }));
+
+    return res.status(200).json({
+      status: true,
+      currentPage: page,
+      totalPages: Math.ceil(totalDoctors / limit),
+      totalDoctors,
+      limit,
+      Doctors,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      status: false,
+      message: "An error occurred while fetching the doctors list.",
+      error: error.message,
+    });
+  }
 };
+
 //==============================================================================================
 export const updateStatus = async (req, res) => {
   const { id, status } = req.body;
@@ -595,7 +647,7 @@ export const approve = async (req, res) => {
 
   const updatedDocument = await Model.updateOne(
     { _id: id },
-    { $set: { isApproved: true,status:true } }
+    { $set: { isApproved: true, status: true } }
   );
 
   if (updatedDocument.matchedCount === 0) {
@@ -669,7 +721,7 @@ export const report_filter = async (req, res) => {
     Gender,
     page = 1,
     pageSize = 10,
-  } = req.query; 
+  } = req.query;
   const now = new Date();
   const oneMonthAgo = new Date(
     now.getFullYear(),
@@ -677,34 +729,46 @@ export const report_filter = async (req, res) => {
     now.getDate()
   );
 
+  // First, ensure that startDate and endDate are either valid date strings or fallback to defaults
+  const processedStartDate = startDate ? new Date(startDate) : oneMonthAgo;
+  const processedEndDate = endDate ? new Date(endDate) : now;
 
-// First, ensure that startDate and endDate are either valid date strings or fallback to defaults
-const processedStartDate = startDate ? new Date(startDate) : oneMonthAgo;
-const processedEndDate = endDate ? new Date(endDate) : now;
+  // Then, explicitly set the hours for startDate and endDate
+  processedStartDate.setUTCHours(0, 0, 0, 0);
+  processedEndDate.setUTCHours(23, 59, 59, 999);
 
-// Then, explicitly set the hours for startDate and endDate
-processedStartDate.setUTCHours(0, 0, 0, 0);
-processedEndDate.setUTCHours(23, 59, 59, 999);
-
-// Now, use these processed dates in your query
-let matchFilters = {
-  createdAt: {
-    $gte: processedStartDate,
-    $lte: processedEndDate,
-  },
-}; 
-  if (BranchID) matchFilters["BranchID"] = new mongoose.Types.ObjectId(BranchID);
-  if (doctorID) matchFilters["doctorID"] = new mongoose.Types.ObjectId(doctorID);
-  if (DepartmentID) matchFilters["DepartmentID"] = new mongoose.Types.ObjectId(DepartmentID);
-  if (ProcedureID) matchFilters["items.ProcedureID"] = new mongoose.Types.ObjectId(ProcedureID);
+  // Now, use these processed dates in your query
+  let matchFilters = {
+    createdAt: {
+      $gte: processedStartDate,
+      $lte: processedEndDate,
+    },
+  };
+  if (BranchID)
+    matchFilters["BranchID"] = new mongoose.Types.ObjectId(BranchID);
+  if (doctorID)
+    matchFilters["doctorID"] = new mongoose.Types.ObjectId(doctorID);
+  if (DepartmentID)
+    matchFilters["DepartmentID"] = new mongoose.Types.ObjectId(DepartmentID);
+  if (ProcedureID)
+    matchFilters["items.ProcedureID"] = new mongoose.Types.ObjectId(
+      ProcedureID
+    );
   if (GST) matchFilters["items.GST"] = Number(GST);
-  if (paymentMethod) matchFilters["paymentMethod.paymentMethodID"] = new mongoose.Types.ObjectId(paymentMethod);
-  if (createdBy) matchFilters["createdBy"] = { $regex: new RegExp(createdBy, 'i') }; ;
- 
-  
+  if (paymentMethod)
+    matchFilters["paymentMethod.paymentMethodID"] = new mongoose.Types.ObjectId(
+      paymentMethod
+    );
+  if (createdBy)
+    matchFilters["createdBy"] = { $regex: new RegExp(createdBy, "i") };
+
   const patientInfoFilters = {};
-  if (visitorTypeId) patientInfoFilters["patientInfo.VisitorTypeID"] = new mongoose.Types.ObjectId(visitorTypeId);
-  if (patientTypeId) patientInfoFilters["patientInfo.patientTypeID"] = new mongoose.Types.ObjectId(patientTypeId);
+  if (visitorTypeId)
+    patientInfoFilters["patientInfo.VisitorTypeID"] =
+      new mongoose.Types.ObjectId(visitorTypeId);
+  if (patientTypeId)
+    patientInfoFilters["patientInfo.patientTypeID"] =
+      new mongoose.Types.ObjectId(patientTypeId);
   if (Gender) patientInfoFilters["patientInfo.Gender"] = Gender;
   if (StartAge && EndAge) {
     patientInfoFilters["patientInfo.age"] = {
@@ -713,7 +777,10 @@ let matchFilters = {
     };
   }
   let itemsMatchConditions = {};
-  if (ProcedureID) itemsMatchConditions["items.ProcedureID"] = new mongoose.Types.ObjectId(ProcedureID);
+  if (ProcedureID)
+    itemsMatchConditions["items.ProcedureID"] = new mongoose.Types.ObjectId(
+      ProcedureID
+    );
   if (GST) itemsMatchConditions["items.GST"] = Number(GST);
 
   let totalPipeline = [
@@ -726,18 +793,20 @@ let matchFilters = {
         as: "patientInfo",
       },
     },
-    { $unwind: "$patientInfo" }, 
-    ...Object.keys(patientInfoFilters).length > 0 ? [{ $match: patientInfoFilters }] : [],
+    { $unwind: "$patientInfo" },
+    ...(Object.keys(patientInfoFilters).length > 0
+      ? [{ $match: patientInfoFilters }]
+      : []),
     {
-      $facet: { 
-        "total": [{ $count: "count" }],        
-        "invoices": [
+      $facet: {
+        total: [{ $count: "count" }],
+        invoices: [
           { $skip: (Number(page) - 1) * Number(pageSize) },
-          { $limit: Number(pageSize) } 
+          { $limit: Number(pageSize) },
         ],
-        "summaries": [
+        summaries: [
           { $unwind: "$items" },
-          {$match:itemsMatchConditions },
+          { $match: itemsMatchConditions },
           {
             $group: {
               _id: "$items.GST",
@@ -745,8 +814,8 @@ let matchFilters = {
               totalGstAmount: { $sum: "$items.gstAmount" },
               totalBaseAmount: { $sum: "$items.baseAmount" },
               totalCount: { $sum: 1 },
-            }
-          }
+            },
+          },
         ],
         globalSums: [
           {
@@ -759,42 +828,60 @@ let matchFilters = {
             },
           },
         ],
-      }
-    }
-  ]; 
-   
+      },
+    },
+  ];
+
   // Execute the total calculation pipeline
-  const results = await PatientInvoice.aggregate(totalPipeline)   
-  const count = results.length > 0 && results[0].total.length > 0 ? results[0].total[0].count : 0;
+  const results = await PatientInvoice.aggregate(totalPipeline);
+  const count =
+    results.length > 0 && results[0].total.length > 0
+      ? results[0].total[0].count
+      : 0;
   const invoices = results.length > 0 ? results[0].invoices : [];
   const summaries = results.length > 0 ? results[0].summaries : [];
   const globalSums = results.length > 0 ? results[0].globalSums[0] : [];
- 
- return res.status(200).json({ count,totalPages: Math.ceil(count / pageSize), summaries,invoices,globalSums });
+
+  return res
+    .status(200)
+    .json({
+      count,
+      totalPages: Math.ceil(count / pageSize),
+      summaries,
+      invoices,
+      globalSums,
+    });
 };
 
 export const report_filter_options = async (req, res) => {
-
   const [
     branches,
     doctors,
     departments,
     procedures,
     paymentMethods,
-    employees, 
+    employees,
     visitorTypes,
     patientTypes,
-    gst
+    gst,
   ] = await Promise.all([
-    Branch.find({status:true,isApproved:true},{securityCredentials:0}),
-    Doctor.find({status:true,isApproved:true}),
-    Department.find({status:true,isApproved:true}).populate('BranchID').sort('BranchID'),
-    Procedure.find({status:true,isApproved:true}).populate('DepartmentID').populate('BranchID').sort('DepartmentID'),
-    PaymentMethod.find({status:true,isApproved:true}),
-    Employee.find({status:true,isApproved:true},{securityCredentials:0}),
-    VisitorType.find({status:true,isApproved:true}),
-    PatientType.find({status:true,isApproved:true}), 
-    Procedure.aggregate([{'$group': {'_id': '$GST'}}])
+    Branch.find({ status: true, isApproved: true }, { securityCredentials: 0 }),
+    Doctor.find({ status: true, isApproved: true }),
+    Department.find({ status: true, isApproved: true })
+      .populate("BranchID")
+      .sort("BranchID"),
+    Procedure.find({ status: true, isApproved: true })
+      .populate("DepartmentID")
+      .populate("BranchID")
+      .sort("DepartmentID"),
+    PaymentMethod.find({ status: true, isApproved: true }),
+    Employee.find(
+      { status: true, isApproved: true },
+      { securityCredentials: 0 }
+    ),
+    VisitorType.find({ status: true, isApproved: true }),
+    PatientType.find({ status: true, isApproved: true }),
+    Procedure.aggregate([{ $group: { _id: "$GST" } }]),
   ]);
 
   res.status(200).json({
@@ -803,21 +890,19 @@ export const report_filter_options = async (req, res) => {
     departments,
     procedures,
     paymentMethods,
-    employees, 
+    employees,
     visitorTypes,
     patientTypes,
-    gst
+    gst,
   });
-
 };
 //==============================================================================================
 
 export const Edit = async (req, res) => {
-  const { _id,type,description } = req.body;
+  const { _id, type, description } = req.body;
   const value = req.path.split("/")[1];
   const collectionName = req.path.split("/")[1];
-  const Model = models[collectionName]; 
-
+  const Model = models[collectionName];
 
   if (!Model) {
     return res.status(404).send("Collection not found");
@@ -829,16 +914,13 @@ export const Edit = async (req, res) => {
   ]);
 
   if (Object.keys(validationErrors).length > 0)
-  return res.status(400).json({ errors: validationErrors });
+    return res.status(400).json({ errors: validationErrors });
 
   const data = {
     type,
-    description
-  }
-  const updatedDocument = await Model.updateOne(
-    { _id},
-    { $set: data }
-  );
+    description,
+  };
+  const updatedDocument = await Model.updateOne({ _id }, { $set: data });
 
   if (updatedDocument.matchedCount === 0) {
     return res.status(404).send("Document not found");
@@ -851,32 +933,31 @@ export const Edit = async (req, res) => {
 //==============================================================================================
 
 export const ProcedureEdit = async (req, res) => {
-  const { _id,procedure,description,gstOption,HSNCode,GST } = req.body;
+  const { _id, procedure, description, gstOption, HSNCode, GST } = req.body;
   const value = req.path.split("/")[1];
   const collectionName = req.path.split("/")[1];
-  const Model = models[collectionName];  
+  const Model = models[collectionName];
 
   if (!Model) {
     return res.status(404).send("Collection not found");
-  } 
+  }
 
   const validationErrors = await validateInputs([
-    [procedure, "address", "procedure"], 
+    [procedure, "address", "procedure"],
     [description, "address", "description"],
     [gstOption === "non-exception" && [GST, "GST", "GST"]],
-    [HSNCode, "name", "HSNCode"], 
+    [HSNCode, "name", "HSNCode"],
   ]);
   if (Object.keys(validationErrors).length > 0)
     return res.status(400).json({ errors: validationErrors });
 
   const editedProcedure = {
-    procedure ,
-    description ,
-    gstOption ,
-    HSNCode ,
-    GST
-  }
-
+    procedure,
+    description,
+    gstOption,
+    HSNCode,
+    GST: gstOption === "non-exception" && GST ? GST : 0,
+  };
 
   const updatedDocument = await Model.updateOne(
     { _id },
@@ -894,35 +975,31 @@ export const ProcedureEdit = async (req, res) => {
 //==============================================================================================
 
 export const AlertEdit = async (req, res) => {
-  const { _id,msg,type,startDate,endDate } = req.body;
+  const { _id, msg, type, startDate, endDate } = req.body;
   const value = req.path.split("/")[1];
   const collectionName = req.path.split("/")[1];
-  const Model = models[collectionName]; 
-  
+  const Model = models[collectionName];
+
   const validationErrors = await validateInputs([
     [msg, "address", "Message"],
-    [type, "name", "Type"]
-  ]); 
+    [type, "name", "Type"],
+  ]);
 
-if (Object.keys(validationErrors).length > 0)
-  return res.status(400).json({ errors: validationErrors });
+  if (Object.keys(validationErrors).length > 0)
+    return res.status(400).json({ errors: validationErrors });
 
-
-const EditedAlert ={
-  msg, 
-  type ,
-  startDate ,
-  endDate
-} 
+  const EditedAlert = {
+    msg,
+    type,
+    startDate,
+    endDate,
+  };
 
   if (!Model) {
     return res.status(404).send("Collection not found");
   }
 
-  const updatedDocument = await Model.updateOne(
-    { _id },
-    { $set: EditedAlert }
-  );
+  const updatedDocument = await Model.updateOne({ _id }, { $set: EditedAlert });
 
   if (updatedDocument.matchedCount === 0) {
     return res.status(404).send("Document not found");
@@ -935,30 +1012,28 @@ const EditedAlert ={
 //==============================================================================================
 
 export const departmntEdit = async (req, res) => {
-  const { _id,Name} = req.body;
+  const { _id, Name } = req.body;
   const value = req.path.split("/")[1];
   const collectionName = req.path.split("/")[1];
-  const Model = models[collectionName]; 
-
+  const Model = models[collectionName];
 
   if (!Model) {
     return res.status(404).send("Collection not found");
   }
 
-  const validationErrors = await validateInputs([ 
-    [Name, "name", "Department Name"]
-  ]); 
+  const validationErrors = await validateInputs([
+    [Name, "name", "Department Name"],
+  ]);
 
-if (Object.keys(validationErrors).length > 0)
-  return res.status(400).json({ errors: validationErrors });
-
+  if (Object.keys(validationErrors).length > 0)
+    return res.status(400).json({ errors: validationErrors });
 
   const editedDepartment = {
     Name,
-  }
+  };
   const updatedDocument = await Model.updateOne(
     { _id },
-    { $set: editedDepartment}
+    { $set: editedDepartment }
   );
 
   if (updatedDocument.matchedCount === 0) {
@@ -970,10 +1045,21 @@ if (Object.keys(validationErrors).length > 0)
   });
 };
 
+//=========================================================================================
 export const BranchEdit = async (req, res) => {
-  const { _id, branchName, address, city, state, country, pincode, phone, email } = req.body;
+  const {
+    _id,
+    branchName,
+    address,
+    city,
+    state,
+    country,
+    pincode,
+    phone,
+    email,
+  } = req.body;
   const collectionName = req.path.split("/")[1];
-  const Model = models[collectionName]; 
+  const Model = models[collectionName];
 
   const validationErrors = await validateInputs([
     [branchName, "name", "branchName"],
@@ -983,20 +1069,32 @@ export const BranchEdit = async (req, res) => {
     [country, "name", "country"],
     [pincode, "zip", "pincode"],
     [phone, "phone", "Phone Number"],
-    [email, "email", "email"], 
+    [email, "email", "email"],
   ]);
 
   if (Object.keys(validationErrors).length > 0) {
     return res.status(400).json({ errors: validationErrors });
   }
 
-  const editedBranch = { branchName, address, city, state, country, pincode, phone, email };
+  const editedBranch = {
+    branchName,
+    address,
+    city,
+    state,
+    country,
+    pincode,
+    phone,
+    email,
+  };
 
   if (!Model) {
     return res.status(404).send("Collection not found");
   }
 
-  const updatedDocument = await Model.updateOne({ _id }, { $set: editedBranch });
+  const updatedDocument = await Model.updateOne(
+    { _id },
+    { $set: editedBranch }
+  );
 
   if (updatedDocument.matchedCount === 0) {
     return res.status(404).send("Document not found");
@@ -1007,10 +1105,21 @@ export const BranchEdit = async (req, res) => {
   });
 };
 
+//=========================================================================================
 export const EmployeeEdit = async (req, res) => {
-  const { _id, firstName, lastName, email, phone, designation,  age, Gender, address } = req.body;
+  const {
+    _id,
+    firstName,
+    lastName,
+    email,
+    phone,
+    designation,
+    age,
+    Gender,
+    address,
+  } = req.body;
   const collectionName = req.path.split("/")[1];
-  const Model = models[collectionName]; 
+  const Model = models[collectionName];
 
   const validationErrors = await validateInputs([
     [firstName, "name", "firstName"],
@@ -1027,13 +1136,25 @@ export const EmployeeEdit = async (req, res) => {
     return res.status(400).json({ errors: validationErrors });
   }
 
-  const editedEmployee = { firstName, lastName, email, phone, designation,  age, Gender, address };
+  const editedEmployee = {
+    firstName,
+    lastName,
+    email,
+    phone,
+    designation,
+    age,
+    Gender,
+    address,
+  };
 
   if (!Model) {
     return res.status(404).send("Collection not found");
   }
 
-  const updatedDocument = await Model.updateOne({ _id }, { $set: editedEmployee });
+  const updatedDocument = await Model.updateOne(
+    { _id },
+    { $set: editedEmployee }
+  );
 
   if (updatedDocument.matchedCount === 0) {
     return res.status(404).send("Document not found");
@@ -1044,25 +1165,27 @@ export const EmployeeEdit = async (req, res) => {
   });
 };
 
+//=========================================================================================
 export const PaymentMethodEdit = async (req, res) => {
   const { _id, Method } = req.body;
- const collectionName = req.path.split("/")[1];
-  const Model = models[collectionName]; 
+  const collectionName = req.path.split("/")[1];
+  const Model = models[collectionName];
 
   if (!Model) {
     return res.status(404).send("Collection not found");
-  } 
-  const validationErrors = await validateInputs([
-    [Method, "name", "Method"], 
-  ]); 
+  }
+  const validationErrors = await validateInputs([[Method, "name", "Method"]]);
 
   if (Object.keys(validationErrors).length > 0) {
     return res.status(400).json({ errors: validationErrors });
   }
 
   const editedPaymentMethod = { Method };
- 
-  const updatedDocument = await Model.updateOne({ _id }, { $set: editedPaymentMethod });
+
+  const updatedDocument = await Model.updateOne(
+    { _id },
+    { $set: editedPaymentMethod }
+  );
 
   if (updatedDocument.matchedCount === 0) {
     return res.status(404).send("Document not found");
@@ -1073,10 +1196,10 @@ export const PaymentMethodEdit = async (req, res) => {
   });
 };
 
-
+//=========================================================================================
 export const editDoctor = async (req, res) => {
   const {
-    _id,  
+    _id,
     name,
     age,
     Gender,
@@ -1088,7 +1211,7 @@ export const editDoctor = async (req, res) => {
     address,
     procedureIds,
   } = req.body;
- 
+
   const { firstName, lastName } = req.verifiedUser;
   const Role = req?.verifiedUser?.role?.roleType;
 
@@ -1101,7 +1224,7 @@ export const editDoctor = async (req, res) => {
     [email, "email", "Email"],
     [address, "address", "Address"],
     [DepartmentID, "objectID", "DepartmentID"],
-    [BranchID, "objectID", "BranchID"], 
+    [BranchID, "objectID", "BranchID"],
   ]);
 
   if (Object.keys(validationErrors).length > 0)
@@ -1118,9 +1241,6 @@ export const editDoctor = async (req, res) => {
     phone,
     email,
     address,
-    // updatedBy: firstName + " " + lastName, // Changed to updatedBy
-    // status: Role === "admin" ? true : false,
-    // isApproved: Role === "admin" ? true : false,
   };
 
   try {
@@ -1134,13 +1254,149 @@ export const editDoctor = async (req, res) => {
       return res.status(404).json({ message: "Doctor not found" });
     }
 
-    res.status(200).json({ message: "Doctor updated successfully", updatedDoctor });
+    res
+      .status(200)
+      .json({ message: "Doctor updated successfully", updatedDoctor });
   } catch (error) {
     res.status(500).json({ message: "Error updating doctor", error });
   }
 };
 
+//=========================================================================================
+export const updatetaskStatus = async (req, res) => {
+  try {
+    const employeeId = req?.verifiedUser?.id;
+    const { taskId, status } = req.body;
 
+    const employee = await Employee.findById(employeeId);
 
+    if (!employee) {
+      return res.status(404).json({ error: "Employee not found" });
+    }
 
+    const task = employee.tasks.id(taskId);
 
+    if (!task) {
+      return res.status(404).json({ error: "Task not found" });
+    }
+
+    task.status = status;
+
+    await employee.save();
+
+    res
+      .status(200)
+      .json({ message: "Task status updated successfully", updatedTask: task });
+  } catch (error) {
+    console.error("Failed to update task status:", error);
+    res.status(500).json({ error: "Failed to update task status" });
+  }
+};
+
+//=========================================================================================
+export const edit_task = async (req, res) => {
+  try {
+    const employeeId = req?.verifiedUser?.id;
+
+    const { taskId, description } = req.body;
+
+    const employee = await Employee.findById(employeeId);
+
+    if (!employee) {
+      return res.status(404).json({ error: "Employee not found" });
+    }
+
+    const taskIndex = employee.tasks.findIndex((task) => {
+      return task.id === taskId;
+    });
+
+    if (taskIndex === -1) {
+      return res.status(404).json({ error: "Task not found" });
+    }
+
+    employee.tasks[taskIndex].description = description;
+    await employee.save();
+
+    res.status(200).json({ message: "Task updated successfully", employee });
+  } catch (error) {
+    console.error("Failed to update task:", error);
+    res.status(500).json({ error: "Failed to update task" });
+  }
+};
+
+//=========================================================================================
+export const set_task = async (req, res) => {
+  try {
+    const { task } = req.body;
+    const employeeId = req?.verifiedUser?.id;
+
+    if (!employeeId || !task) {
+      return res
+        .status(400)
+        .send("Missing task details or unable to verify employee ID");
+    }
+
+    const updatedEmployee = await Employee.findByIdAndUpdate(
+      employeeId,
+      { $push: { tasks: { $each: [task], $position: 0 } } },
+      { new: true, safe: true, upsert: false }
+    );
+
+    if (!updatedEmployee) {
+      return res.status(404).send("Employee not found");
+    }
+
+    res.json({
+      success: true,
+      message: "Task added successfully",
+      updatedEmployee,
+    });
+  } catch (error) {
+    console.error("Error adding task to employee:", error);
+    res.status(500).send("Internal server error");
+  }
+};
+
+//=========================================================================================
+export const delete_task = async (req, res) => {
+  const employeeId = req?.verifiedUser?.id;
+  const { taskId } = req.body;
+  console.log(employeeId, taskId);
+
+  try {
+    const employee = await Employee.findById(employeeId);
+
+    if (!employee) {
+      return res.status(404).json({ error: "Employee not found" });
+    }
+
+    employee.tasks.pull(taskId);
+
+    await employee.save();
+
+    res.json({ message: "Task deleted successfully" });
+  } catch (error) {
+    console.error("Failed to delete task:", error);
+    res.status(500).json({ error: "Failed to delete task" });
+  }
+};
+
+//=========================================================================================
+
+export const get_task = async (req, res) => {
+  const employeeId = req?.verifiedUser?.id;
+
+  if (!employeeId) {
+    return res.status(401).send("Unauthorized: No employee ID provided");
+  }
+
+  const employeeWithTasks = await Employee.findById(employeeId)
+    .select("tasks")
+    .exec();
+
+  if (!employeeWithTasks) {
+    return res.status(404).send("Employee not found");
+  }
+
+  res.json({ tasks: employeeWithTasks.tasks });
+};

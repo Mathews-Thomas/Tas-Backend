@@ -10,8 +10,8 @@ import Doctor from "../models/DoctorSchema.js";
 import Procedure from "../models/ProcedureSchema.js";
 import PatientInvoice from "../models/PatientInvoiceSchema.js";
 import PaymentMethod from "../models/PaymentMethodSchema.js";
-import Alert from "../models/AlertSchema.js"
-import { convertToIST } from "../Commonfn/ISTFormat.js";
+import Alert from "../models/AlertSchema.js" 
+import mongoose from "mongoose";
 
 // ================================================
 export const employeeLogin = async (req, res) => {
@@ -51,7 +51,7 @@ export const employeeLogin = async (req, res) => {
 };
 
 // ================================================
-export const addPatient = async (req, res) => {
+export const addPatient = async (req, res) => { 
   const {
     Name,
     age,
@@ -111,6 +111,8 @@ export const addPatient = async (req, res) => {
 
 // ================================================
 export const getAddPatient = async (req, res) => {
+
+  
   const BranchID = req.params.BranchID;
   const VisitorTypes = await VisitorType.find({ status: true ,isApproved:true});
   const PatientTypes = await PatientType.find({ status: true,isApproved:true });
@@ -249,18 +251,14 @@ export const addInvoice = async (req, res) => {
     });
 };
 
+//========================================================
 export const getInviuceDropdowns = async (req, res) => {
   const { PatientID, BranchID } = req.query;
   const { firstName, lastName } = req.verifiedUser;
-  const companyInfo = {
-    companyName: "TOPMOST KALAMASSERY",
-    companyAddress: `OPPOSITE METRO PILLAR 316, PKA NAGAR,ALFIYA NAGARA, SOUTH KALAMASSRY, ERNAKULAM, KERALA
-  KOCHI 682033 , 
-  Phone:7558011177
-  Email:topmostkalamasserry@gmail.com`,
-  };
-  const [
-    Doctors,
+ 
+
+    const [
+    Doctors, 
     Patients,
     Procedures,
     VisitorTypes,
@@ -268,14 +266,14 @@ export const getInviuceDropdowns = async (req, res) => {
     branch,
     paymentMethods,
   ] = await Promise.all([
-    Doctor.find({BranchID, status: true ,isApproved:true}).populate("DepartmentID"),
-    Patient.findOne({ PatientID })
+    Doctor.find({BranchID, status: true ,isApproved:true}).populate("DepartmentID"), 
+    Patient.findOne({PatientID })  
       .populate("VisitorTypeID")
       .populate("patientTypeID"),
     Procedure.find({ status: true ,isApproved:true,BranchID}),
     VisitorType.find({ status: true  ,isApproved:true}),
     PatientType.find({ status: true  ,isApproved:true}),
-    Branch.findOne({ _id: BranchID  ,isApproved:true}),
+    Branch.findOne({ _id: BranchID  ,isApproved:true},{securityCredentials:0}),
     PaymentMethod.find({ status: true  ,isApproved:true}),
   ]);
 
@@ -301,7 +299,7 @@ export const getInviuceDropdowns = async (req, res) => {
     return res.json({
       Patients: null,
       nextInvoceID,
-      companyInfo,
+      branch,
       Doctors,
       Procedures,
       VisitorTypes,
@@ -314,7 +312,7 @@ export const getInviuceDropdowns = async (req, res) => {
     .status(200)
     .json({
       nextInvoceID,
-      companyInfo,
+      branch,
       Patients,
       Doctors,
       Procedures,
@@ -325,6 +323,8 @@ export const getInviuceDropdowns = async (req, res) => {
     });
 };
 
+
+//===========================================================
 export const getPatientInvoiceList = async (req, res) => {
   const {
     page = 1,
@@ -397,6 +397,8 @@ export const getPatientInvoiceList = async (req, res) => {
   });
 
 };
+
+//==========================================================
  export const get_alert = async (req,res)=>{
    const { BranchID } = req.params;
    const validationErrors = await validateInputs ([
@@ -432,3 +434,111 @@ export const get_branch =async (req,res)=>{
 
     res.status(200).send(branch)
 }
+
+// ================================================
+export const edit_Patient = async (req, res) => {  
+  const {
+    Name,
+    age,
+    Gender,
+    address,
+    phone,
+    email,
+    VisitorTypeID,
+    patientTypeID,
+    PatientID,
+    BranchID,
+  } = req.body;
+  const { firstName, lastName } = req.verifiedUser;
+  const validationErrors = await validateInputs([
+    [Name, "name", "Name"],
+    [age, "age", "age"],
+    [Gender, "gender", "Gender"],
+    [phone, "phone", "phone"],
+    [BranchID, "BranchID", "BranchID"],
+  ]);
+
+  if (Object.keys(validationErrors).length > 0)
+    return res.status(400).json({ errors: validationErrors });
+  
+  const updatedPatient = {
+    PatientID:  PatientID ,
+    Name,
+    age,
+    Gender,
+    address: address ? address : "",
+    phone,
+    email: email ? email : "",
+    VisitorTypeID,
+    patientTypeID,
+    createdBy: firstName + " " + lastName,
+    BranchID, 
+  };
+
+   await Patient.updateOne({PatientID},updatedPatient).then((data) =>
+      res
+        .status(200)
+        .json({ message: "Patient updated successfully", data })
+    )
+    .catch((err) => res.status(200).json({ message: "error", err }));
+};
+
+
+
+// ================================================
+export const editInvoice = async (req, res) => {
+  
+  const {
+    invoiceID,
+    patient,
+    doctorID,
+    DepartmentID,
+    items,
+    totalAmount,
+    BranchID,
+    paymentMethod,
+    paymentMethodID,
+    totalDiscount,
+    amountToBePaid,
+  } = req.body;
+  const { firstName, lastName } = req.verifiedUser;
+
+  const validationErrors = await validateInputs([
+    [doctorID, "objectID", "doctorID"],
+    [DepartmentID, "objectID", "DepartmentID"],
+    [paymentMethodID, "objectID", "paymentMethodID"],
+    [patient._id, "objectID", "patientID"],
+    [invoiceID, "name", "invoiceID"],
+    [totalAmount, "price", "totalAmount"],
+    [amountToBePaid, "price", "amountToBePaid"],
+    [BranchID, "BranchID", "BranchID"],
+  ]);
+
+  if (Object.keys(validationErrors).length > 0)
+    return res.status(400).json({ errors: validationErrors });
+
+  const newInvoice = {
+    patientID: patient._id,
+    doctorID: doctorID,
+    DepartmentID: DepartmentID,
+    paymentMethod: {
+      paymentMethod,
+      paymentMethodID,
+    },
+    items: items,
+    totalAmount: totalAmount,
+    totalDiscount: totalDiscount,
+    amountToBePaid: amountToBePaid,
+    createdBy: firstName + " " + lastName,
+    BranchID: BranchID,
+    status: true,
+  }; 
+  PatientInvoice.updateOne({invoiceID}, newInvoice)
+    .then((resp) => { 
+      res.status(200).json({ message: "Invoice created", data: resp });
+    })
+    .catch((err) => {
+      res.status(400).json({ error: "Error creating invoice", err });
+    });
+};
+
