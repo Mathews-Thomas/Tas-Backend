@@ -542,3 +542,34 @@ export const editInvoice = async (req, res) => {
     });
 };
 
+export const delete_invoice = async (req,res)=>{ 
+const { invoiceID } = req.params;
+try {
+    // Find the invoice to get the patientID before deletion
+    const invoiceToDelete = await PatientInvoice.findById(invoiceID);
+    if (!invoiceToDelete) {
+        return res.status(404).send({ message: 'Invoice not found' });
+    }
+    const patientID = invoiceToDelete.patientID;
+
+    // Delete the invoice
+    await PatientInvoice.findByIdAndDelete(invoiceID);
+
+    // Remove the invoice ID from the patient's Invoices array
+    await Patient.findByIdAndUpdate(patientID, {
+        $pull: { Invoices: new mongoose.Types.ObjectId(invoiceID) }
+    });
+
+    res.status(200).send({ message: 'Invoice deleted successfully' });
+} catch (error) {
+    console.error('Error deleting invoice:', error);
+    res.status(500).send({ message: 'Failed to delete invoice' });
+}
+
+
+
+
+
+
+}
+
