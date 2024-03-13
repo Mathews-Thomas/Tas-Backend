@@ -166,7 +166,7 @@ export const getPatientList = async (req, res) => {
       ],
     };
   }
-  const patients = await Patient.find({BranchID,...filter})
+  const patients = await Patient.find({BranchID,...filter}).populate('VisitorTypeID').populate('patientTypeID')
     .sort({ createdAt: -1 })
     .limit(limit * 1)
     .skip((page - 1) * limit)
@@ -486,8 +486,7 @@ export const edit_Patient = async (req, res) => {
 
 
 // ================================================
-export const editInvoice = async (req, res) => {
-  
+export const editInvoice = async (req, res) => { 
   const {
     invoiceID,
     patient,
@@ -517,31 +516,37 @@ export const editInvoice = async (req, res) => {
   if (Object.keys(validationErrors).length > 0)
     return res.status(400).json({ errors: validationErrors });
 
-  const newInvoice = {
+    const currentInvoice = await PatientInvoice.findOne({ invoiceID });
+    if (!currentInvoice) {
+        return res.status(404).json({ message: "Invoice not found" });
+    }
+
+    if (currentInvoice.patientID.toString() !== patient._id) { 
+      await Patient.findByIdAndUpdate(currentInvoice.patientID, { $pull: { Invoices: currentInvoice._id } });
+ 
+      await Patient.findByIdAndUpdate(patient._id, { $addToSet: { Invoices: currentInvoice._id } });
+  }
+  const updatedInvoice = await PatientInvoice.updateOne({ invoiceID }, {
     patientID: patient._id,
-    doctorID: doctorID,
-    DepartmentID: DepartmentID,
+    doctorID,
+    DepartmentID,
     paymentMethod: {
-      paymentMethod,
-      paymentMethodID,
+        paymentMethod,
+        paymentMethodID,
     },
-    items: items,
-    totalAmount: totalAmount,
-    totalDiscount: totalDiscount,
-    amountToBePaid: amountToBePaid,
-    createdBy: firstName + " " + lastName,
-    BranchID: BranchID,
+    items,
+    totalAmount,
+    totalDiscount,
+    amountToBePaid,
+    createdBy: `${firstName} ${lastName}`,
+    BranchID,
     status: true,
-  }; 
-  PatientInvoice.updateOne({invoiceID}, newInvoice)
-    .then((resp) => { 
-      res.status(200).json({ message: "Invoice created", data: resp });
-    })
-    .catch((err) => {
-      res.status(400).json({ error: "Error creating invoice", err });
-    });
+});
+
+res.status(200).json({ message: "Invoice updated successfully", data: updatedInvoice }); 
 };
 
+//================================================================================
 export const delete_invoice = async (req,res)=>{ 
 const { invoiceID } = req.params;
 try {

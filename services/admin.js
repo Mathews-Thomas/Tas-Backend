@@ -842,15 +842,13 @@ export const report_filter = async (req, res) => {
   const summaries = results.length > 0 ? results[0].summaries : [];
   const globalSums = results.length > 0 ? results[0].globalSums[0] : [];
 
-  return res
-    .status(200)
-    .json({
-      count,
-      totalPages: Math.ceil(count / pageSize),
-      summaries,
-      invoices,
-      globalSums,
-    });
+  return res.status(200).json({
+    count,
+    totalPages: Math.ceil(count / pageSize),
+    summaries,
+    invoices,
+    globalSums,
+  });
 };
 
 export const report_filter_options = async (req, res) => {
@@ -1360,8 +1358,7 @@ export const set_task = async (req, res) => {
 //=========================================================================================
 export const delete_task = async (req, res) => {
   const employeeId = req?.verifiedUser?.id;
-  const { taskId } = req.body;
-  console.log(employeeId, taskId);
+  const { taskId } = req.body; 
 
   try {
     const employee = await Employee.findById(employeeId);
@@ -1398,5 +1395,153 @@ export const get_task = async (req, res) => {
     return res.status(404).send("Employee not found");
   }
 
-  res.json({ tasks: employeeWithTasks.tasks });
+  res.json({ tasks: employeeWithTasks.tasks });
+};
+
+//=====================================================================
+export const adminhome_reports = async (req, res) => {
+  try {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const startOfDay = new Date(today);
+    const endOfDay = new Date(today);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    const invoiceAggregationPipeline = [
+      {
+        $match: {
+          createdAt: {
+            $gte: startOfDay,
+            $lte: endOfDay,
+          },
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          todaysInvoice: { $sum: 1 },
+          todaysCollections: { $sum: "$amountToBePaid" },
+          todaysPatients: { $addToSet: "$patientID" },
+        },
+      },
+    ];
+
+    const invoiceResult = await PatientInvoice.aggregate(
+      invoiceAggregationPipeline
+    );
+
+    const doctorAggregationPipeline = [
+      {
+        $lookup: {
+          from: "branches",
+          localField: "BranchID",
+          foreignField: "_id",
+          as: "branch",
+        },
+      },
+      {
+        $unwind: "$branch",
+      },
+      {
+        $lookup: {
+          from: "patientinvoices",
+          localField: "_id",
+          foreignField: "doctorID",
+          as: "invoices",
+        },
+      },
+      {
+        $unwind: { path: "$invoices", preserveNullAndEmptyArrays: true },
+      },
+      {
+        $group: {
+          _id: "$_id",
+          department: { $first: "$specialization" },
+          name: { $first: "$name" },
+          branch: { $first: "$branch.branchName" },
+          totalCollection: { $sum: "$invoices.amountToBePaid" },
+          firstInvoiceCreatedAt: { $min: { $dateToString: { format: "%Y-%m-%d", date: "$invoices.createdAt" } } },
+          lastInvoiceCreatedAt: { $max: { $dateToString: { format: "%Y-%m-%d", date: "$invoices.createdAt" } } },
+         },
+      },
+      {
+        $sort: { totalCollection: -1 },
+      },
+    ];
+
+    const doctorsResult = await Doctor.aggregate(doctorAggregationPipeline);
+
+    const procedureAggregationPipeline = [
+      {
+        $unwind: "$items",
+      },
+      {
+        $lookup: {
+          from: "doctors",
+          localField: "doctorID",
+          foreignField: "_id",
+          as: "doctor",
+        },
+      },
+      {
+        $unwind: "$doctor",
+      },
+      {
+        $lookup: {
+          from: "branches",
+          localField: "doctor.BranchID",
+          foreignField: "_id",
+          as: "branch",
+        },
+      },
+      {
+        $unwind: "$branch",
+      },
+      {
+        $lookup: {
+          from: "departments",
+          localField: "doctor.DepartmentID",
+          foreignField: "_id",
+          as: "department",
+        },
+      },
+      {
+        $unwind: "$department",
+      },
+      {
+        $group: {
+          _id: "$items.ProcedureID",
+          procedure: { $first: "$items.procedure" },
+          branch: { $first: "$branch.branchName" },
+          department: { $first: "$department.Name" },
+          totalCount: { $sum: "$items.quantity" },
+        },
+      },
+      {
+        $sort: { totalCount: -1 },
+      },
+    ];
+
+    const procedureResult = await PatientInvoice.aggregate(
+      procedureAggregationPipeline
+    );
+
+    const employeeResult = await Employee.find();
+
+    res.json({
+      todaysInvoice:
+        invoiceResult.length > 0 ? invoiceResult[0].todaysInvoice : 0,
+      todaysCollections:
+        invoiceResult.length > 0 ? invoiceResult[0].todaysCollections : 0,
+      todaysPatientsCount:
+        invoiceResult.length > 0 ? invoiceResult[0].todaysPatients.length : 0,
+      doctors: doctorsResult,
+      procedures: procedureResult,
+      employee: employeeResult,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Internal server error" });
+  }
 };
