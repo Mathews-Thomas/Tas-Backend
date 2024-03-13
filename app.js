@@ -13,7 +13,7 @@ const PORT = process.env.PORT;
 
 app.use(
   cors({
-    origin: ['http://localhost:5173',"topmosthealthcare.in","https://main.d395fpgxnzfeue.amplifyapp.com","https://topmost.netlify.app"],
+    origin: ['http://localhost:5173',"https://www.topmosthealthcare.in","https://topmosthealthcare.in","https://main.d395fpgxnzfeue.amplifyapp.com","https://topmost.netlify.app"],
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
     credentials: true,
     allowedHeaders: ['Content-Type', 'Authorization']
