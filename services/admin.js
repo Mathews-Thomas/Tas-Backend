@@ -547,12 +547,12 @@ export const list_doctors = async (req, res) => {
 
   const searchQuery = req.query.search
     ? {
-        // Assuming you want to search by doctor's name and specialization, adjust as needed
-        $or: [
-          { name: new RegExp(req.query.search, "i") }, // 'i' for case-insensitive
-          { specialization: new RegExp(req.query.search, "i") },
-        ],
-      }
+      // Assuming you want to search by doctor's name and specialization, adjust as needed
+      $or: [
+        { name: new RegExp(req.query.search, "i") }, // 'i' for case-insensitive
+        { specialization: new RegExp(req.query.search, "i") },
+      ],
+    }
     : {};
 
   try {
@@ -691,6 +691,16 @@ export const set_alert = async (req, res) => {
       return res.status(400).json(err);
     });
 };
+//==============================================================================================
+export const user_details = async (req, res) => {
+  let user = req.verifiedUser;
+  user = JSON.parse(JSON.stringify(user));
+  delete user.securityCredentials;
+
+  res.status(200).json({ user });
+};
+
+
 //==============================================================================================
 export const get_Branches = async (req, res) => {
   const Branches = await Branch.find({ status: true, isApproved: true });
@@ -1358,7 +1368,7 @@ export const set_task = async (req, res) => {
 //=========================================================================================
 export const delete_task = async (req, res) => {
   const employeeId = req?.verifiedUser?.id;
-  const { taskId } = req.body; 
+  const { taskId } = req.body;
 
   try {
     const employee = await Employee.findById(employeeId);
@@ -1463,7 +1473,7 @@ export const adminhome_reports = async (req, res) => {
           totalCollection: { $sum: "$invoices.amountToBePaid" },
           firstInvoiceCreatedAt: { $min: { $dateToString: { format: "%Y-%m-%d", date: "$invoices.createdAt" } } },
           lastInvoiceCreatedAt: { $max: { $dateToString: { format: "%Y-%m-%d", date: "$invoices.createdAt" } } },
-         },
+        },
       },
       {
         $sort: { totalCollection: -1 },
