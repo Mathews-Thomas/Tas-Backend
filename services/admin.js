@@ -530,11 +530,11 @@ export const list_addOns = async (req, res) => {
   return res.status(200).json({
     status: true,
     Branches,
-    PaymentMethods,
+    "Payment Methods":PaymentMethods,
     Procedures,
     Departments,
-    VisitorTypes,
-    PatientTypes,
+    "Visitor Types":VisitorTypes,
+    "Patient Types":PatientTypes,
     Alerts,
     Employees,
   });
