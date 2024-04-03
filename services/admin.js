@@ -14,6 +14,7 @@ import Alert from "../models/AlertSchema.js";
 import PatientInvoice from "../models/PatientInvoiceSchema.js";
 import moment from "moment-timezone";
 import mongoose from "mongoose";
+import MainDepartment from "../models/HeadDepartmentSchema.js";
 
 const models = {
   Branch,
@@ -26,6 +27,7 @@ const models = {
   Procedure,
   Doctor,
   Alert,
+  MainDepartment,
 };
 
 export const employeeRegister = async (req, res) => {
@@ -64,7 +66,7 @@ export const employeeRegister = async (req, res) => {
     "securityCredentials.loginId": loginId,
   });
   if (userExist)
-    return res.status(400).json({ error: "Username already exists" });
+    return res.status(400).json({ error: "Username Already Exists" });
 
   const hashedPassword = await bcrypt.hash(password, 10);
   const newEmployee = {
@@ -91,7 +93,7 @@ export const employeeRegister = async (req, res) => {
 
   return res
     .status(200)
-    .json({ message: "Employee registered successfully", EmpData });
+    .json({ message: "Employee Registered Successfully", EmpData });
 };
 //==============================================================================================
 export const BranchRegister = async (req, res) => {
@@ -212,6 +214,104 @@ export const addDepartment = async (req, res) => {
     )
     .catch((err) => res.status(200).json({ message: "error", err }));
 };
+
+//==============================================================================================
+export const addMainDepartment = async (req, res) => {
+  const { Name, BranchID, DepartmentID } = req.body;
+  const { firstName, lastName } = req.verifiedUser;
+  const validationErrors = await validateInputs([
+    [Name, "name", "Department Name"],
+    [BranchID, "objectID", "Branch"],
+  ]);
+  const Role = req?.verifiedUser?.role?.roleType;
+  if (Object.keys(validationErrors).length > 0)
+    return res.status(400).json({ errors: validationErrors });
+
+  let newMainDepartment = {
+    Name,
+    BranchID,
+    departments: [...DepartmentID],
+    createdBy: firstName + " " + lastName,
+    status: Role === "admin" ? true : false,
+    isApproved: Role === "admin" ? true : false,
+  };
+
+  const DepartmentExist = await MainDepartment.findOne({
+    Name: new RegExp(`^${Name}$`, "i"),
+    BranchID: BranchID,
+  });
+
+  if (DepartmentExist)
+    return res
+      .status(400)
+      .json({ errors: "Department Name is already existed" });
+
+  MainDepartment.create(newMainDepartment)
+    .then((data) =>
+      res
+        .status(200)
+        .json({ message: "New Main Department created successfully", data })
+    )
+    .catch((err) => res.status(200).json({ message: "error", err }));
+};
+
+//=========================================================================================
+export const edit_MainDepartment = async (req, res) => {
+  const { _id, Name, BranchID, DepartmentID } = req.body;
+
+  const { firstName, lastName } = req.verifiedUser;
+  const Role = req?.verifiedUser?.role?.roleType;
+
+  const validationErrors = await validateInputs([
+    [Name, "name", "Name"],
+    [BranchID, "objectID", "BranchID"],
+  ]);
+
+  if (Object.keys(validationErrors).length > 0)
+    return res.status(400).json({ errors: validationErrors });
+
+  const DepartmentExist = await MainDepartment.findOne({
+    Name: new RegExp(`^${Name}$`, "i"),
+    BranchID: BranchID,
+    _id: { $ne: _id },
+  });
+
+  if (DepartmentExist)
+    return res
+      .status(400)
+      .json({ errors: "Department Name is already existed" });
+
+  let updateMainDepartment = {
+    Name,
+    BranchID,
+    departments: [...DepartmentID],
+    createdBy: firstName + " " + lastName,
+    status: Role === "admin" ? true : false,
+    isApproved: Role === "admin" ? true : false,
+  };
+
+  try {
+    const updatedMainDepartment = await MainDepartment.findByIdAndUpdate(
+      _id,
+      updateMainDepartment,
+      { new: true } // Option to return the document after update
+    );
+
+    if (!updatedMainDepartment) {
+      return res.status(404).json({ message: "MainDepartment not found" });
+    }
+
+    res
+      .status(200)
+      .json({
+        message: "MainDepartment updated successfully",
+        updatedMainDepartment,
+      });
+  } catch (error) {
+    res.status(500).json({ message: "Error updating MainDepartment", error });
+  }
+};
+
 //==============================================================================================
 export const addPatientType = async (req, res) => {
   const { type, description } = req.body;
@@ -425,9 +525,10 @@ export const Get_add_doctor = async (req, res) => {
     .populate("BranchID")
     .sort({ BranchID: 1 });
   const Branches = await Branch.find({ status: true, isApproved: true });
-  const Procedures = await Procedure.find({ status: true, isApproved: true })
-    .populate("BranchID")
+  const Procedures = await Procedure.find({ status: true, isApproved: true }).populate("BranchID")
     .sort({ BranchID: 1 });
+  const Roles = await Role.find({ status: true})
+
   if (!Branches)
     return res
       .status(400)
@@ -443,7 +544,7 @@ export const Get_add_doctor = async (req, res) => {
 
   return res
     .status(200)
-    .json({ status: true, Branches, Departments, Procedures });
+    .json({ status: true, Branches, Departments, Procedures, Roles });
 };
 //==============================================================================================
 export const get_addOns = async (req, res) => {
@@ -471,15 +572,22 @@ export const get_addOns = async (req, res) => {
 };
 //==============================================================================================
 export const list_addOns = async (req, res) => {
+  const { BranchID } = req.query;
+  const Role = req?.verifiedUser?.role?.roleType;
   const results = await Promise.all([
     Branch.find().sort({ createdAt: -1 }),
     Employee.find().sort({ createdAt: -1 }),
     PaymentMethod.find().sort({ createdAt: -1 }),
-    Procedure.find().sort({ createdAt: -1 }),
-    Department.find().sort({ createdAt: -1 }),
+    Procedure.find(Role === "user" ? { BranchID } : {}).sort({ createdAt: -1 }),
+    Department.find(Role === "user" ? { BranchID } : {}).sort({
+      createdAt: -1,
+    }),
     VisitorType.find().sort({ createdAt: -1 }),
     PatientType.find().sort({ createdAt: -1 }),
     Alert.find().sort({ createdAt: -1 }),
+    MainDepartment.find(Role === "user" ? { BranchID } : {}).sort({
+      createdAt: -1,
+    }),
   ]);
 
   const [
@@ -491,7 +599,9 @@ export const list_addOns = async (req, res) => {
     VisitorTypes,
     PatientTypes,
     alerts,
+    mainDepartment,
   ] = results;
+
   const branchMap = Branches.reduce((map, branch) => {
     map[branch._id] = branch.branchName;
     return map;
@@ -507,6 +617,7 @@ export const list_addOns = async (req, res) => {
     ...dept.toObject({ virtuals: true }),
     BranchName: branchMap[dept.BranchID],
   }));
+
   const convertTime = (date) => {
     if (typeof date === "string") {
       return date.split("T")[0];
@@ -527,16 +638,23 @@ export const list_addOns = async (req, res) => {
     DepartmentName: DepartmentMap[proc.DepartmentID],
     BranchName: branchMap[proc.BranchID],
   }));
+
+  const Main_Department = mainDepartment.map((maindpt) => ({
+    ...maindpt.toObject({ virtuals: true }),
+    BranchName: branchMap[maindpt.BranchID],
+  }));
+
   return res.status(200).json({
     status: true,
     Branches,
-    "Payment Methods":PaymentMethods,
+    "Payment Methods": PaymentMethods,
     Procedures,
     Departments,
-    "Visitor Types":VisitorTypes,
-    "Patient Types":PatientTypes,
+    "Visitor Types": VisitorTypes,
+    "Patient Types": PatientTypes,
     Alerts,
     Employees,
+    "Main Department": Main_Department,
   });
 };
 //==============================================================================================
@@ -547,12 +665,12 @@ export const list_doctors = async (req, res) => {
 
   const searchQuery = req.query.search
     ? {
-      // Assuming you want to search by doctor's name and specialization, adjust as needed
-      $or: [
-        { name: new RegExp(req.query.search, "i") }, // 'i' for case-insensitive
-        { specialization: new RegExp(req.query.search, "i") },
-      ],
-    }
+        // Assuming you want to search by doctor's name and specialization, adjust as needed
+        $or: [
+          { name: new RegExp(req.query.search, "i") }, // 'i' for case-insensitive
+          { specialization: new RegExp(req.query.search, "i") },
+        ],
+      }
     : {};
 
   try {
@@ -700,7 +818,6 @@ export const user_details = async (req, res) => {
   res.status(200).json({ user });
 };
 
-
 //==============================================================================================
 export const get_Branches = async (req, res) => {
   const Branches = await Branch.find({ status: true, isApproved: true });
@@ -734,8 +851,8 @@ export const report_filter = async (req, res) => {
   } = req.query;
   const now = new Date();
   const oneMonthAgo = new Date(
-    now.getFullYear(),
-    now.getMonth() - 1,
+    now.getFullYear() - 1,
+    now.getMonth(),
     now.getDate()
   );
 
@@ -745,8 +862,8 @@ export const report_filter = async (req, res) => {
 
   // Then, explicitly set the hours for startDate and endDate
   processedStartDate.setUTCHours(0, 0, 0, 0);
-  processedEndDate.setUTCHours(23, 59, 59, 999);
-
+  processedEndDate.setUTCHours(23, 59, 59, 999); 
+  
   // Now, use these processed dates in your query
   let matchFilters = {
     createdAt: {
@@ -760,10 +877,11 @@ export const report_filter = async (req, res) => {
     matchFilters["doctorID"] = new mongoose.Types.ObjectId(doctorID);
   if (DepartmentID)
     matchFilters["DepartmentID"] = new mongoose.Types.ObjectId(DepartmentID);
-  if (ProcedureID)
-    matchFilters["items.ProcedureID"] = new mongoose.Types.ObjectId(
-      ProcedureID
-    );
+  if (ProcedureID && ProcedureID.length) {
+    matchFilters["items.ProcedureID"] = {
+      $in: ProcedureID.map((id) => new mongoose.Types.ObjectId(id)),
+    };
+  }
   if (GST) matchFilters["items.GST"] = Number(GST);
   if (paymentMethod)
     matchFilters["paymentMethod.paymentMethodID"] = new mongoose.Types.ObjectId(
@@ -787,10 +905,12 @@ export const report_filter = async (req, res) => {
     };
   }
   let itemsMatchConditions = {};
-  if (ProcedureID)
-    itemsMatchConditions["items.ProcedureID"] = new mongoose.Types.ObjectId(
-      ProcedureID
-    );
+
+  if (ProcedureID && ProcedureID.length) {
+    matchFilters["items.ProcedureID"] = {
+      $in: ProcedureID.map((id) => new mongoose.Types.ObjectId(id)),
+    };
+  }
   if (GST) itemsMatchConditions["items.GST"] = Number(GST);
 
   let totalPipeline = [
@@ -1156,7 +1276,7 @@ export const EmployeeEdit = async (req, res) => {
   };
 
   if (!Model) {
-    return res.status(404).send("Collection not found");
+    return res.status(404).send("Collection Not Found");
   }
 
   const updatedDocument = await Model.updateOne(
@@ -1165,10 +1285,10 @@ export const EmployeeEdit = async (req, res) => {
   );
 
   if (updatedDocument.matchedCount === 0) {
-    return res.status(404).send("Document not found");
+    return res.status(404).send("Document Not Found");
   }
   res.status(200).json({
-    message: "Employee updated successfully",
+    message: "Employee Updated Successfully",
     updatedDocument,
   });
 };
@@ -1471,8 +1591,22 @@ export const adminhome_reports = async (req, res) => {
           name: { $first: "$name" },
           branch: { $first: "$branch.branchName" },
           totalCollection: { $sum: "$invoices.amountToBePaid" },
-          firstInvoiceCreatedAt: { $min: { $dateToString: { format: "%Y-%m-%d", date: "$invoices.createdAt" } } },
-          lastInvoiceCreatedAt: { $max: { $dateToString: { format: "%Y-%m-%d", date: "$invoices.createdAt" } } },
+          firstInvoiceCreatedAt: {
+            $min: {
+              $dateToString: {
+                format: "%Y-%m-%d",
+                date: "$invoices.createdAt",
+              },
+            },
+          },
+          lastInvoiceCreatedAt: {
+            $max: {
+              $dateToString: {
+                format: "%Y-%m-%d",
+                date: "$invoices.createdAt",
+              },
+            },
+          },
         },
       },
       {
@@ -1553,5 +1687,234 @@ export const adminhome_reports = async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+export const consolidated_reports = async (req, res) => {
+  try {
+    const extPipline = [
+      {
+        $lookup: {
+          from: "departments",
+          localField: "DepartmentID",
+          foreignField: "_id",
+          as: "departmentInfo",
+        },
+      },
+      {
+        $unwind: "$departmentInfo",
+      },
+      {
+        $lookup: {
+          from: "maindepartments",
+          localField: "departmentInfo._id",
+          foreignField: "departments",
+          as: "mainDepartmentInfo",
+        },
+      },
+      {
+        $unwind: "$mainDepartmentInfo",
+      },
+      {
+        $lookup: {
+          from: "branches",
+          localField: "mainDepartmentInfo.BranchID",
+          foreignField: "_id",
+          as: "branchInfo",
+        },
+      },
+      {
+        $unwind: "$branchInfo",
+      },
+      {
+        $group: {
+          _id: {
+            branchId: "$branchInfo._id",
+            mainDepartmentId: "$mainDepartmentInfo._id",
+            departmentId: "$departmentInfo._id",
+          },
+          branchName: { $first: "$branchInfo.branchName" },
+          mainDepartmentName: { $first: "$mainDepartmentInfo.Name" },
+          departmentName: { $first: "$departmentInfo.Name" },
+          departmentSum: { $sum: "$amountToBePaid" },
+          departmentInvoiceCount: { $sum: 1 },
+        },
+      },
+      {
+        $group: {
+          _id: {
+            branchId: "$_id.branchId",
+            mainDepartmentId: "$_id.mainDepartmentId",
+          },
+          branchName: { $first: "$branchName" },
+          mainDepartmentName: { $first: "$mainDepartmentName" },
+          mainDepartmentSum: { $sum: "$departmentSum" },
+          mainDepartmentInvoiceCount: { $sum: "$departmentInvoiceCount" },
+          departments: {
+            $push: {
+              departmentId: "$_id.departmentId",
+              departmentName: "$departmentName",
+              departmentSum: "$departmentSum",
+              departmentInvoiceCount: "$departmentInvoiceCount",
+            },
+          },
+        },
+      },
+      {
+        $group: {
+          _id: "$_id.branchId",
+          branchName: { $first: "$branchName" },
+          branchSum: { $sum: "$mainDepartmentSum" },
+          branchInvoiceCount: { $sum: "$mainDepartmentInvoiceCount" },
+          mainDepartments: {
+            $push: {
+              mainDepartmentId: "$_id.mainDepartmentId",
+              mainDepartmentName: "$mainDepartmentName",
+              mainDepartmentSum: "$mainDepartmentSum",
+              mainDepartmentInvoiceCount: "$mainDepartmentInvoiceCount",
+              departments: "$departments",
+            },
+          },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          branchId: "$_id",
+          branchName: 1,
+          branchSum: 1,
+          branchInvoiceCount: 1,
+          mainDepartments: 1,
+        },
+      },
+    ];
+
+    // Calculate "today" start and end
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
+    const todayEnd = new Date();
+    todayEnd.setHours(23, 59, 59, 999);
+
+    // Calculate "this month" start and end
+    const thisMonthStart = new Date();
+    thisMonthStart.setDate(1); // First day of the current month
+    thisMonthStart.setHours(0, 0, 0, 1);
+
+    const thisMonthEnd = new Date();
+    thisMonthEnd.setMonth(thisMonthEnd.getMonth() + 1);
+    thisMonthEnd.setDate(0); // Last day of the current month
+    thisMonthEnd.setHours(23, 59, 59, 999);
+
+    const now = new Date();
+
+    const data = await PatientInvoice.aggregate([
+      {
+        $facet: {
+          today: [
+            { $match: { createdAt: { $gte: todayStart, $lte: todayEnd } } },
+            ...extPipline,
+          ],
+          asOfLastMonth: [
+            {
+              $match: {
+                createdAt: { $gte: thisMonthStart, $lte: thisMonthEnd },
+              },
+            },
+            ...extPipline,
+          ],
+        },
+      },
+    ]);
+
+    
+    const doctorsResult = await PatientInvoice.aggregate([
+      {
+        $match: {
+          createdAt: { $gte: thisMonthStart, $lte: thisMonthEnd },
+        },
+      },
+      {
+        // Join with the doctors collection to fetch doctor names
+        $lookup: {
+          from: "doctors",
+          localField: "doctorID",
+          foreignField: "_id",
+          as: "doctorInfo"
+        }
+      },
+      {
+        // Deconstruct the doctorInfo array
+        $unwind: {
+          path: "$doctorInfo",
+          preserveNullAndEmptyArrays: true
+        }
+      },
+      {
+        // Deconstruct the items array to access each procedure
+        $unwind: "$items"
+      },
+      {
+        // Optional: Join with the procedures collection if you want additional procedure details
+        $lookup: {
+          from: "procedures",
+          localField: "items.ProcedureID",
+          foreignField: "_id",
+          as: "procedureInfo"
+        }
+      },
+      {
+        // Group by doctor and procedure
+        $group: {
+          _id: {
+            doctorName: "$doctorInfo.name",
+            procedure: "$items.procedure" // Assuming you want to group by the procedure name directly from the items array
+          },
+          totalInvoiceSum: { $sum: "$items.amountToBePaid" }, // Summing up the amountToBePaid for each procedure
+          count: { $sum: 1 } // Counting the number of times each procedure was performed
+        }
+      },
+      {
+        // Optional: Sort the results, for example, by doctor name and then total invoice sum
+        $sort: {
+          "_id.doctorName": 1,
+          totalInvoiceSum: -1
+        }
+      },
+      {
+        // Project/format the output
+        $project: {
+          _id: 0,
+          doctorName: "$_id.doctorName",
+          procedure: "$_id.procedure",
+          totalInvoiceSum: 1,
+          procedureCount: "$count"
+        }
+      }
+    ]);
+
+
+    const convertToIST = async (Date) => {
+      return moment(Date).tz("Asia/Kolkata").format("DD/MM/YYYY");
+    };
+
+    const date = {
+      todayStartData: await convertToIST(todayStart),
+      todayEndDate: await convertToIST(todayEnd),
+      lastMonthStart: await convertToIST(thisMonthStart),
+      lastMonthEnd: await convertToIST(thisMonthEnd),
+    };
+
+    res
+      .status(200)
+      .json({
+        today: data[0].today,
+        asOfLastMonth: data[0].asOfLastMonth,
+        date,
+        DoctorsColloction:doctorsResult
+      });
+  } catch (error) {
+    console.error("Aggregation error:", error);
+    res.status(500).send("Server error");
   }
 };
