@@ -13,7 +13,7 @@ import Doctor from "../models/DoctorSchema.js";
 import Alert from "../models/AlertSchema.js";
 import PatientInvoice from "../models/PatientInvoiceSchema.js";
 import moment from "moment-timezone";
-import mongoose from "mongoose";
+import mongoose, { isValidObjectId } from "mongoose";
 import MainDepartment from "../models/HeadDepartmentSchema.js";
 import Patient from "../models/PatientSchema.js";
 
@@ -29,6 +29,10 @@ const models = {
   Doctor,
   Alert,
   MainDepartment,
+};
+
+const convertToIST = async (Date) => {
+  return moment(Date).tz("Asia/Kolkata").format("DD/MM/YYYY");
 };
 
 export const employeeRegister = async (req, res) => {
@@ -1691,9 +1695,8 @@ export const adminhome_reports = async (req, res) => {
 };
 
 export const consolidated_reports = async (req, res) => {
-  const convertToIST = async (Date) => {
-    return moment(Date).tz("Asia/Kolkata").format("DD/MM/YYYY");
-  };
+  const { BranchID } = req.query;
+ 
 
   try {
     // Calculate "today" start and end
@@ -1812,30 +1815,39 @@ export const consolidated_reports = async (req, res) => {
       },
     ];
 
+    let matchAsOfLastMonth = {
+      createdAt: { $gte: thisMonthStart, $lte: thisMonthEnd },
+    };
+
+    if (isValidObjectId(BranchID)) {
+      matchAsOfLastMonth["BranchID"] = new mongoose.Types.ObjectId(BranchID);
+    }
+
+    let matchtoday = {
+      createdAt: { $gte: todayStart, $lte: todayEnd }
+    };
+
+    if (isValidObjectId(BranchID)) {
+      matchtoday["BranchID"] = new mongoose.Types.ObjectId(BranchID);
+    }
+
     const data = await PatientInvoice.aggregate([
       {
         $facet: {
-          today: [
-            { $match: { createdAt: { $gte: todayStart, $lte: todayEnd } } },
-            ...extPipline,
-          ],
-          asOfLastMonth: [
-            {
-              $match: {
-                createdAt: { $gte: thisMonthStart, $lte: thisMonthEnd },
-              },
-            },
-            ...extPipline,
-          ],
+          today: [{ $match: matchtoday }, ...extPipline],
+          asOfLastMonth: [{ $match: matchAsOfLastMonth,},...extPipline],
         },
       },
     ]);
 
+    const doctorsMatch = {createdAt: { $gte: thisMonthStart, $lte: thisMonthEnd }}
+    if (isValidObjectId(BranchID)) {
+      doctorsMatch["BranchID"] = new mongoose.Types.ObjectId(BranchID);
+    }
+
     const doctorsResult = await PatientInvoice.aggregate([
       {
-        $match: {
-          createdAt: { $gte: thisMonthStart, $lte: thisMonthEnd },
-        },
+        $match: doctorsMatch
       },
       {
         $lookup: {
@@ -1859,10 +1871,10 @@ export const consolidated_reports = async (req, res) => {
           _id: {
             doctorName: "$doctorInfo.name",
             procedure: "$items.procedure",
-            branchId: "$BranchID",  
+            branchId: "$BranchID",
           },
-          totalInvoiceSum: { $sum: "$items.amountToBePaid" },  
-          procedureCount: { $sum: 1 },  
+          totalInvoiceSum: { $sum: "$items.amountToBePaid" },
+          procedureCount: { $sum: 1 },
         },
       },
       {
@@ -1906,6 +1918,7 @@ export const consolidated_reports = async (req, res) => {
 };
 
 export const consolidated_progress_reports = async (req, res) => {
+  const { BranchID } = req.query;
   // Calculate "today" start and end
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
@@ -1925,15 +1938,19 @@ export const consolidated_progress_reports = async (req, res) => {
 
   const now = new Date();
 
+  
   const aggregateNewPatientsByBranchAndDepartment = async (
     startDate,
     endDate
   ) => {
+    const VsitorTypeMatch = {createdAt: { $gte: startDate, $lte: endDate }}
+    if (isValidObjectId(BranchID)) {
+      VsitorTypeMatch["BranchID"] = new mongoose.Types.ObjectId(BranchID);
+    }
+
     return PatientInvoice.aggregate([
       {
-        $match: {
-          createdAt: { $gte: startDate, $lte: endDate },
-        },
+        $match: VsitorTypeMatch
       },
       {
         $lookup: {
@@ -1982,19 +1999,21 @@ export const consolidated_progress_reports = async (req, res) => {
   );
 
   const aggregateDailyUniquePatients = async (startOfMonth, endOfMonth) => {
+    const VsitorTypeMatch = {createdAt: { $gte: startOfMonth, $lte: endOfMonth }}
+    if (isValidObjectId(BranchID)) {
+      VsitorTypeMatch["BranchID"] = new mongoose.Types.ObjectId(BranchID);
+    }
     return PatientInvoice.aggregate([
       {
-        $match: {
-          createdAt: { $gte: startOfMonth, $lte: endOfMonth }
-        }
+        $match: VsitorTypeMatch
       },
       {
         // Convert createdAt to a date string truncating the time part to easily group by day
         $addFields: {
           date: {
-            $dateToString: { format: "%Y-%m-%d", date: "$createdAt" }
-          }
-        }
+            $dateToString: { format: "%Y-%m-%d", date: "$createdAt" },
+          },
+        },
       },
       {
         // First group by date, branch, department, and patientID to get unique visits
@@ -2004,22 +2023,22 @@ export const consolidated_progress_reports = async (req, res) => {
             patientID: "$patientID",
             BranchID: "$BranchID",
             department: "$DepartmentID",
-          }
-        }
+          },
+        },
       },
       {
         // Then group by date, branch, and department to count unique patients
         $group: {
-          _id: { 
+          _id: {
             BranchID: "$_id.BranchID",
             department: "$_id.department",
           },
-          uniquePatients: { $sum: 1 }
-        }
+          uniquePatients: { $sum: 1 },
+        },
       },
       {
         // Optionally sort the results by date, then branch, then department
-        $sort: { "_id.date": 1, "_id.BranchID": 1, "_id.department": 1 }
+        $sort: { "_id.date": 1, "_id.BranchID": 1, "_id.department": 1 },
       },
       {
         // Project the desired output format
@@ -2028,44 +2047,52 @@ export const consolidated_progress_reports = async (req, res) => {
           date: "$_id.date",
           BranchID: "$_id.BranchID",
           department: "$_id.department",
-          uniquePatients: 1
-        }
-      }
+          uniquePatients: 1,
+        },
+      },
     ]);
   };
-   
-  
+
   // Use the function for today's visitors
-  const todaysVisitors = await aggregateDailyUniquePatients(todayStart, todayEnd);
-  
+  const todaysVisitors = await aggregateDailyUniquePatients(
+    todayStart,
+    todayEnd
+  );
+
   // And for this month's visitors
-  const thisMonthsVisitors = await aggregateDailyUniquePatients(thisMonthStart, thisMonthEnd);
-  
-   
-  
+  const thisMonthsVisitors = await aggregateDailyUniquePatients(
+    thisMonthStart,
+    thisMonthEnd
+  );
+
   const branches = await Branch.find({}, { _id: 1, branchName: 1 });
-  const MainDepartments = await MainDepartment.find({}, { _id: 1, departments: 1,Name:1,BranchID:1 }); 
-  
-  
+  const MainDepartments = await MainDepartment.find(
+    {},
+    { _id: 1, departments: 1, Name: 1, BranchID: 1 }
+  );
+
   const vistorResults = {
     today: todaysVisitors,
     thisMonth: thisMonthsVisitors,
-  }
-  
+  };
+
   const results = {
     today: todayResults,
     thisMonth: thisMonthResults,
   };
 
- 
-  
-
-
+  const date = {
+    todayStartData: await convertToIST(todayStart),
+    todayEndDate: await convertToIST(todayEnd),
+    lastMonthStart: await convertToIST(thisMonthStart),
+    lastMonthEnd: await convertToIST(thisMonthEnd),
+  };
 
   res.status(200).json({
     branches,
     MainDepartments,
     vistorResults,
-    results, 
+    results,
+    date
   });
 };
