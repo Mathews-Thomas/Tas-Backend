@@ -1,6 +1,6 @@
 import express from "express"
 import { serviceHandler } from "../../services/serviceHandler.js"
-import { report_filter,edit_MainDepartment, user_details,addMainDepartment,consolidated_reports, AddRole, get_task, delete_task, adminhome_reports, edit_task, set_task, updatetaskStatus, BranchRegister, set_alert, report_filter_options, Edit, addDepartment, updateStatus, get_Branches, addPatientType, list_doctors, Get_add_doctor, list_addOns, get_addOns, adddoctor, addPaymentMethod, addprocedure, addVisitorType, employeeRegister, approve, AlertEdit, ProcedureEdit, departmntEdit, BranchEdit, EmployeeEdit, PaymentMethodEdit, editDoctor } from "../../services/admin.js"
+import { report_filter,consolidated_progress_reports,edit_MainDepartment, user_details,addMainDepartment,consolidated_reports, AddRole, get_task, delete_task, adminhome_reports, edit_task, set_task, updatetaskStatus, BranchRegister, set_alert, report_filter_options, Edit, addDepartment, updateStatus, get_Branches, addPatientType, list_doctors, Get_add_doctor, list_addOns, get_addOns, adddoctor, addPaymentMethod, addprocedure, addVisitorType, employeeRegister, approve, AlertEdit, ProcedureEdit, departmntEdit, BranchEdit, EmployeeEdit, PaymentMethodEdit, editDoctor } from "../../services/admin.js"
 import auth from "../../middleware/EmployeeAuth.js"
 
 const router = express.Router()
@@ -69,7 +69,8 @@ router.post("/set-task", auth(), serviceHandler(set_task))
 router.get("/get-task", auth(), serviceHandler(get_task))
 
 router.get("/adminhome-reports", auth(), serviceHandler(adminhome_reports))
-router.get("/consolidated-reports", auth(), serviceHandler(consolidated_reports))
+router.get("/consolidated-reports",   serviceHandler(consolidated_reports))
+router.get("/consolidated-progress-reports",   serviceHandler(consolidated_progress_reports))
 
 
 const adminRouter = router

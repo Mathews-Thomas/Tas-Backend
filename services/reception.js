@@ -10,12 +10,11 @@ import Doctor from "../models/DoctorSchema.js";
 import Procedure from "../models/ProcedureSchema.js";
 import PatientInvoice from "../models/PatientInvoiceSchema.js";
 import PaymentMethod from "../models/PaymentMethodSchema.js";
-import Alert from "../models/AlertSchema.js" 
+import Alert from "../models/AlertSchema.js";
 import mongoose from "mongoose";
 
 // ================================================
 export const employeeLogin = async (req, res) => {
- 
   const { loginId, password } = req.body;
 
   const validationErrors = validateInputs([
@@ -31,11 +30,9 @@ export const employeeLogin = async (req, res) => {
   }).populate("role");
   if (!employee) return res.status(401).json({ err: "Username mismatched" });
   if (!employee.status || !employee.isApproved)
-    return res
-      .status(403)
-      .json({
-        err: "Access denied. Please contact the administrator.",
-      });
+    return res.status(403).json({
+      err: "Access denied. Please contact the administrator.",
+    });
 
   const isPasswordMatch = await bcrypt.compare(
     password,
@@ -51,7 +48,7 @@ export const employeeLogin = async (req, res) => {
 };
 
 // ================================================
-export const addPatient = async (req, res) => { 
+export const addPatient = async (req, res) => {
   const {
     Name,
     age,
@@ -76,7 +73,7 @@ export const addPatient = async (req, res) => {
   if (Object.keys(validationErrors).length > 0)
     return res.status(400).json({ errors: validationErrors });
 
-  const existingPatient = await Patient.findOne({BranchID, Name, phone });
+  const existingPatient = await Patient.findOne({ BranchID, Name, phone });
 
   if (existingPatient)
     return res.status(400).send({ errors: "Patient already exists." });
@@ -111,11 +108,15 @@ export const addPatient = async (req, res) => {
 
 // ================================================
 export const getAddPatient = async (req, res) => {
-
-  
   const BranchID = req.params.BranchID;
-  const VisitorTypes = await VisitorType.find({ status: true ,isApproved:true});
-  const PatientTypes = await PatientType.find({ status: true,isApproved:true });
+  const VisitorTypes = await VisitorType.find({
+    status: true,
+    isApproved: true,
+  });
+  const PatientTypes = await PatientType.find({
+    status: true,
+    isApproved: true,
+  });
   const { branchName } = await Branch.findOne({ _id: BranchID });
   const PatientCout = await Patient.countDocuments({ BranchID });
   const nextPatientID = `TM${branchName[0]}${PatientCout + 1}`;
@@ -166,7 +167,9 @@ export const getPatientList = async (req, res) => {
       ],
     };
   }
-  const patients = await Patient.find({BranchID,...filter}).populate('VisitorTypeID').populate('patientTypeID')
+  const patients = await Patient.find({ BranchID, ...filter })
+    .populate("VisitorTypeID")
+    .populate("patientTypeID")
     .sort({ createdAt: -1 })
     .limit(limit * 1)
     .skip((page - 1) * limit)
@@ -199,6 +202,7 @@ export const addInvoice = async (req, res) => {
     totalDiscount,
     amountToBePaid,
   } = req.body;
+
   const { firstName, lastName } = req.verifiedUser;
 
   const validationErrors = await validateInputs([
@@ -233,17 +237,49 @@ export const addInvoice = async (req, res) => {
     status: true,
   };
 
+  const includesConsultationFee = items.filter(
+    (item) =>
+      item.procedure === "Consultation" ||
+      item.ProcedureID === "consultationProcedureID"
+  ); 
+ 
+
+
   PatientInvoice.create(newInvoice)
     .then((resp) => {
-      Patient.findOneAndUpdate(
-        { _id: patient._id },
-        { $push: { Invoices: resp?._id } },
-        { new: true }
-      )
+      const updateObject = { $push: { Invoices: resp?._id } };
+      if (includesConsultationFee && includesConsultationFee.length > 0  ) {
+        updateObject.$push.consultation = {
+          Date: new Date(),
+          Amount: includesConsultationFee[0].amountToBePaid,
+          invoiceID: resp?._id,
+        },
+        updateObject.lastConsultationFeeDate = new Date()         
+      }
+      const today = new Date();
+      const patientCreatedAt = new Date(patient.createdAt);
+      const lastConsultationDate = new Date(patient.lastConsultationFeeDate);
+      const daysSinceLastConsultation = Math.floor((today - lastConsultationDate) / (1000 * 60 * 60 * 24));
+      const visitorTypeUpdate = {}; 
+
+      if (patientCreatedAt.toDateString() === today.toDateString()) { 
+        visitorTypeUpdate.VisitorTypeID = "65d482a7bcd904686ffb8631"; // Use the actual ID for "New" 
+      } else if (daysSinceLastConsultation <= 30) { 
+        visitorTypeUpdate.VisitorTypeID = "65d482ecbcd904686ffb8636"; // Use the actual ID for "Visit" 
+      } else {  
+        visitorTypeUpdate.VisitorTypeID = "65d48337bcd904686ffb863b"; // Use the actual ID for "Renew"
+      }
+   
+      Object.assign(updateObject, visitorTypeUpdate);
+
+      Patient.findOneAndUpdate({ _id: patient._id }, updateObject, {
+        new: true,
+      })
         .then(() => {})
         .catch((updateErr) => {
           res.status(400).json({ error: "Error updating patient:", updateErr });
         });
+
       res.status(200).json({ message: "Invoice created", data: resp });
     })
     .catch((err) => {
@@ -255,10 +291,9 @@ export const addInvoice = async (req, res) => {
 export const getInviuceDropdowns = async (req, res) => {
   const { PatientID, BranchID } = req.query;
   const { firstName, lastName } = req.verifiedUser;
- 
 
-    const [
-    Doctors, 
+  const [
+    Doctors,
     Patients,
     Procedures,
     VisitorTypes,
@@ -266,25 +301,32 @@ export const getInviuceDropdowns = async (req, res) => {
     branch,
     paymentMethods,
   ] = await Promise.all([
-    Doctor.find({BranchID, status: true ,isApproved:true}).populate("DepartmentID"), 
-    Patient.findOne({PatientID })  
+    Doctor.find({ BranchID, status: true, isApproved: true }).populate(
+      "DepartmentID"
+    ),
+    Patient.findOne({ PatientID })
       .populate("VisitorTypeID")
       .populate("patientTypeID"),
-    Procedure.find({ status: true ,isApproved:true,BranchID}),
-    VisitorType.find({ status: true  ,isApproved:true}),
-    PatientType.find({ status: true  ,isApproved:true}),
-    Branch.findOne({ _id: BranchID  ,isApproved:true},{securityCredentials:0}),
-    PaymentMethod.find({ status: true  ,isApproved:true}),
+    Procedure.find({ status: true, isApproved: true, BranchID }),
+    VisitorType.find({ status: true, isApproved: true }),
+    PatientType.find({ status: true, isApproved: true }),
+    Branch.findOne(
+      { _id: BranchID, isApproved: true },
+      { securityCredentials: 0 }
+    ),
+    PaymentMethod.find({ status: true, isApproved: true }),
   ]);
 
   if (!branch) return res.status(404).send({ errors: "Branch not found." });
 
   const PatientInvoiceCount = await PatientInvoice.countDocuments({ BranchID });
-  const nextInvoceID = `INV${branch.branchName[0].toUpperCase()}${PatientInvoiceCount + 1}`;
+  const nextInvoceID = `INV${branch.branchName[0].toUpperCase()}${
+    PatientInvoiceCount + 1
+  }`;
 
   // Check for empty results
 
-   if (
+  if (
     !Doctors.length ||
     !Procedures.length ||
     !VisitorTypes.length ||
@@ -308,21 +350,18 @@ export const getInviuceDropdowns = async (req, res) => {
       createdBy: firstName + " " + lastName,
     });
 
-  res
-    .status(200)
-    .json({
-      nextInvoceID,
-      branch,
-      Patients,
-      Doctors,
-      Procedures,
-      VisitorTypes,
-      PatientTypes,
-      paymentMethods,
-      createdBy: firstName + " " + lastName,
-    });
+  res.status(200).json({
+    nextInvoceID,
+    branch,
+    Patients,
+    Doctors,
+    Procedures,
+    VisitorTypes,
+    PatientTypes,
+    paymentMethods,
+    createdBy: firstName + " " + lastName,
+  });
 };
-
 
 //===========================================================
 export const getPatientInvoiceList = async (req, res) => {
@@ -378,9 +417,10 @@ export const getPatientInvoiceList = async (req, res) => {
   const patientInvoice = await PatientInvoice.find(filter)
     .populate("doctorID")
     .populate("patientID")
-    .populate("DepartmentID").populate({
-      path: 'items.ProcedureID', // Specify the path to the field you want to populate
-      model: 'Procedure' // Specify the model name associated with the ObjectId
+    .populate("DepartmentID")
+    .populate({
+      path: "items.ProcedureID", // Specify the path to the field you want to populate
+      model: "Procedure", // Specify the model name associated with the ObjectId
     })
     .sort({ createdAt: -1 })
     .limit(limit * 1)
@@ -395,48 +435,49 @@ export const getPatientInvoiceList = async (req, res) => {
     currentPage: page,
     companyInfo,
   });
-
 };
 
 //==========================================================
- export const get_alert = async (req,res)=>{
-   const { BranchID } = req.params;
-   const validationErrors = await validateInputs ([
-    [BranchID,"BranchID","BranchID"]
-   ])
-   if (Object.keys(validationErrors).length > 0)
-    return res.status(400).json({ errors: validationErrors });
-    
-    const today = new Date(); 
-    const alerts = await Alert.find({
-      status:true,
-      BranchID,
-        startDate: { $lte: today },
-        endDate: { $gte: today }
-    });
-
-    if(!alerts) return res.status(404).send("Document not found");
-
-    res.status(200).send(alerts)
-
- }
-
-export const get_branch =async (req,res)=>{
+export const get_alert = async (req, res) => {
   const { BranchID } = req.params;
-  const validationErrors = await validateInputs ([
-   [BranchID,"BranchID","BranchID"]
-  ])
+  const validationErrors = await validateInputs([
+    [BranchID, "BranchID", "BranchID"],
+  ]);
   if (Object.keys(validationErrors).length > 0)
-   return res.status(400).json({ errors: validationErrors });
+    return res.status(400).json({ errors: validationErrors });
 
-  const branch = await Branch.findById({_id:BranchID},{securityCredentials:0})
-  if(!branch) return res.status(404).send("branch not found");
+  const today = new Date();
+  const alerts = await Alert.find({
+    status: true,
+    BranchID,
+    startDate: { $lte: today },
+    endDate: { $gte: today },
+  });
 
-    res.status(200).send(branch)
-}
+  if (!alerts) return res.status(404).send("Document not found");
+
+  res.status(200).send(alerts);
+};
+
+export const get_branch = async (req, res) => {
+  const { BranchID } = req.params;
+  const validationErrors = await validateInputs([
+    [BranchID, "BranchID", "BranchID"],
+  ]);
+  if (Object.keys(validationErrors).length > 0)
+    return res.status(400).json({ errors: validationErrors });
+
+  const branch = await Branch.findById(
+    { _id: BranchID },
+    { securityCredentials: 0 }
+  );
+  if (!branch) return res.status(404).send("branch not found");
+
+  res.status(200).send(branch);
+};
 
 // ================================================
-export const edit_Patient = async (req, res) => {  
+export const edit_Patient = async (req, res) => {
   const {
     Name,
     age,
@@ -460,9 +501,9 @@ export const edit_Patient = async (req, res) => {
 
   if (Object.keys(validationErrors).length > 0)
     return res.status(400).json({ errors: validationErrors });
-  
+
   const updatedPatient = {
-    PatientID:  PatientID ,
+    PatientID: PatientID,
     Name,
     age,
     Gender,
@@ -472,21 +513,18 @@ export const edit_Patient = async (req, res) => {
     VisitorTypeID,
     patientTypeID,
     createdBy: firstName + " " + lastName,
-    BranchID, 
+    BranchID,
   };
 
-   await Patient.updateOne({PatientID},updatedPatient).then((data) =>
-      res
-        .status(200)
-        .json({ message: "Patient updated successfully", data })
+  await Patient.updateOne({ PatientID }, updatedPatient)
+    .then((data) =>
+      res.status(200).json({ message: "Patient updated successfully", data })
     )
     .catch((err) => res.status(200).json({ message: "error", err }));
 };
 
-
-
 // ================================================
-export const editInvoice = async (req, res) => { 
+export const editInvoice = async (req, res) => {
   const {
     invoiceID,
     patient,
@@ -516,44 +554,53 @@ export const editInvoice = async (req, res) => {
   if (Object.keys(validationErrors).length > 0)
     return res.status(400).json({ errors: validationErrors });
 
-    const currentInvoice = await PatientInvoice.findOne({ invoiceID });
-    if (!currentInvoice) {
-        return res.status(404).json({ message: "Invoice not found" });
-    }
-
-    if (currentInvoice.patientID.toString() !== patient._id) { 
-      await Patient.findByIdAndUpdate(currentInvoice.patientID, { $pull: { Invoices: currentInvoice._id } });
- 
-      await Patient.findByIdAndUpdate(patient._id, { $addToSet: { Invoices: currentInvoice._id } });
+  const currentInvoice = await PatientInvoice.findOne({ invoiceID });
+  if (!currentInvoice) {
+    return res.status(404).json({ message: "Invoice not found" });
   }
-  const updatedInvoice = await PatientInvoice.updateOne({ invoiceID }, {
-    patientID: patient._id,
-    doctorID,
-    DepartmentID,
-    paymentMethod: {
+
+  if (currentInvoice.patientID.toString() !== patient._id) {
+    await Patient.findByIdAndUpdate(currentInvoice.patientID, {
+      $pull: { Invoices: currentInvoice._id },
+    });
+
+    await Patient.findByIdAndUpdate(patient._id, {
+      $addToSet: { Invoices: currentInvoice._id },
+    });
+  }
+  const updatedInvoice = await PatientInvoice.updateOne(
+    { invoiceID },
+    {
+      patientID: patient._id,
+      doctorID,
+      DepartmentID,
+      paymentMethod: {
         paymentMethod,
         paymentMethodID,
-    },
-    items,
-    totalAmount,
-    totalDiscount,
-    amountToBePaid,
-    createdBy: `${firstName} ${lastName}`,
-    BranchID,
-    status: true,
-});
+      },
+      items,
+      totalAmount,
+      totalDiscount,
+      amountToBePaid,
+      createdBy: `${firstName} ${lastName}`,
+      BranchID,
+      status: true,
+    }
+  );
 
-res.status(200).json({ message: "Invoice updated successfully", data: updatedInvoice }); 
+  res
+    .status(200)
+    .json({ message: "Invoice updated successfully", data: updatedInvoice });
 };
 
 //================================================================================
-export const delete_invoice = async (req,res)=>{ 
-const { invoiceID } = req.params;
-try {
+export const delete_invoice = async (req, res) => {
+  const { invoiceID } = req.params;
+  try {
     // Find the invoice to get the patientID before deletion
     const invoiceToDelete = await PatientInvoice.findById(invoiceID);
     if (!invoiceToDelete) {
-        return res.status(404).send({ message: 'Invoice not found' });
+      return res.status(404).send({ message: "Invoice not found" });
     }
     const patientID = invoiceToDelete.patientID;
 
@@ -562,19 +609,12 @@ try {
 
     // Remove the invoice ID from the patient's Invoices array
     await Patient.findByIdAndUpdate(patientID, {
-        $pull: { Invoices: new mongoose.Types.ObjectId(invoiceID) }
+      $pull: { Invoices: new mongoose.Types.ObjectId(invoiceID) },
     });
 
-    res.status(200).send({ message: 'Invoice deleted successfully' });
-} catch (error) {
-    console.error('Error deleting invoice:', error);
-    res.status(500).send({ message: 'Failed to delete invoice' });
-}
-
-
-
-
-
-
-}
-
+    res.status(200).send({ message: "Invoice deleted successfully" });
+  } catch (error) {
+    console.error("Error deleting invoice:", error);
+    res.status(500).send({ message: "Failed to delete invoice" });
+  }
+};

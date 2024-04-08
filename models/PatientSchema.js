@@ -3,6 +3,7 @@ import { addCreatedAtIST } from "../Commonfn/ISTFormat.js";
 import Branch from "./BranchSchema.js";
 import VisitorType from "./visitorTypeSchema.js";
 import PatientType from "./patientTypeSchema.js";
+import PatientInvoice from "./PatientInvoiceSchema.js";
 
 const patientSchema = new mongoose.Schema({
   PatientID: {type:String},
@@ -21,8 +22,17 @@ const patientSchema = new mongoose.Schema({
   Invoices:[mongoose.Schema.Types.ObjectId],
   VisitorTypeID:{type:mongoose.Schema.Types.ObjectId,ref:VisitorType},
   patientTypeID:{type:mongoose.Schema.Types.ObjectId,ref:PatientType},
-  createdAt: { type: Date, default: Date.now },
   createdBy:String,
+  
+  createdAt: { type: Date, default: Date.now },
+  
+  lastConsultationFeeDate: Date,
+
+  consultation:{
+    Date:Date,
+    Amount:Number,
+    invoiceID:{type:mongoose.Schema.Types.ObjectId,ref:"PatientInvoice"},
+  }, 
   status: Boolean,
   BranchID:{type:mongoose.Schema.Types.ObjectId,ref:Branch},
 });

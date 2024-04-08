@@ -15,6 +15,7 @@ import PatientInvoice from "../models/PatientInvoiceSchema.js";
 import moment from "moment-timezone";
 import mongoose from "mongoose";
 import MainDepartment from "../models/HeadDepartmentSchema.js";
+import Patient from "../models/PatientSchema.js";
 
 const models = {
   Branch,
@@ -301,12 +302,10 @@ export const edit_MainDepartment = async (req, res) => {
       return res.status(404).json({ message: "MainDepartment not found" });
     }
 
-    res
-      .status(200)
-      .json({
-        message: "MainDepartment updated successfully",
-        updatedMainDepartment,
-      });
+    res.status(200).json({
+      message: "MainDepartment updated successfully",
+      updatedMainDepartment,
+    });
   } catch (error) {
     res.status(500).json({ message: "Error updating MainDepartment", error });
   }
@@ -525,9 +524,10 @@ export const Get_add_doctor = async (req, res) => {
     .populate("BranchID")
     .sort({ BranchID: 1 });
   const Branches = await Branch.find({ status: true, isApproved: true });
-  const Procedures = await Procedure.find({ status: true, isApproved: true }).populate("BranchID")
+  const Procedures = await Procedure.find({ status: true, isApproved: true })
+    .populate("BranchID")
     .sort({ BranchID: 1 });
-  const Roles = await Role.find({ status: true})
+  const Roles = await Role.find({ status: true });
 
   if (!Branches)
     return res
@@ -862,8 +862,8 @@ export const report_filter = async (req, res) => {
 
   // Then, explicitly set the hours for startDate and endDate
   processedStartDate.setUTCHours(0, 0, 0, 0);
-  processedEndDate.setUTCHours(23, 59, 59, 999); 
-  
+  processedEndDate.setUTCHours(23, 59, 59, 999);
+
   // Now, use these processed dates in your query
   let matchFilters = {
     createdAt: {
@@ -1691,7 +1691,30 @@ export const adminhome_reports = async (req, res) => {
 };
 
 export const consolidated_reports = async (req, res) => {
+  const convertToIST = async (Date) => {
+    return moment(Date).tz("Asia/Kolkata").format("DD/MM/YYYY");
+  };
+
   try {
+    // Calculate "today" start and end
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
+    const todayEnd = new Date();
+    todayEnd.setHours(23, 59, 59, 999);
+
+    // Calculate "this month" start and end
+    const thisMonthStart = new Date();
+    thisMonthStart.setDate(1); // First day of the current month
+    thisMonthStart.setHours(0, 0, 0, 1);
+
+    const thisMonthEnd = new Date();
+    thisMonthEnd.setMonth(thisMonthEnd.getMonth() + 1);
+    thisMonthEnd.setDate(0); // Last day of the current month
+    thisMonthEnd.setHours(23, 59, 59, 999);
+
+    const now = new Date();
+
     const extPipline = [
       {
         $lookup: {
@@ -1789,25 +1812,6 @@ export const consolidated_reports = async (req, res) => {
       },
     ];
 
-    // Calculate "today" start and end
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
-
-    const todayEnd = new Date();
-    todayEnd.setHours(23, 59, 59, 999);
-
-    // Calculate "this month" start and end
-    const thisMonthStart = new Date();
-    thisMonthStart.setDate(1); // First day of the current month
-    thisMonthStart.setHours(0, 0, 0, 1);
-
-    const thisMonthEnd = new Date();
-    thisMonthEnd.setMonth(thisMonthEnd.getMonth() + 1);
-    thisMonthEnd.setDate(0); // Last day of the current month
-    thisMonthEnd.setHours(23, 59, 59, 999);
-
-    const now = new Date();
-
     const data = await PatientInvoice.aggregate([
       {
         $facet: {
@@ -1827,7 +1831,6 @@ export const consolidated_reports = async (req, res) => {
       },
     ]);
 
-    
     const doctorsResult = await PatientInvoice.aggregate([
       {
         $match: {
@@ -1835,68 +1838,52 @@ export const consolidated_reports = async (req, res) => {
         },
       },
       {
-        // Join with the doctors collection to fetch doctor names
         $lookup: {
           from: "doctors",
           localField: "doctorID",
           foreignField: "_id",
-          as: "doctorInfo"
-        }
+          as: "doctorInfo",
+        },
       },
       {
-        // Deconstruct the doctorInfo array
         $unwind: {
           path: "$doctorInfo",
-          preserveNullAndEmptyArrays: true
-        }
+          preserveNullAndEmptyArrays: true,
+        },
       },
       {
-        // Deconstruct the items array to access each procedure
-        $unwind: "$items"
+        $unwind: "$items",
       },
       {
-        // Optional: Join with the procedures collection if you want additional procedure details
-        $lookup: {
-          from: "procedures",
-          localField: "items.ProcedureID",
-          foreignField: "_id",
-          as: "procedureInfo"
-        }
-      },
-      {
-        // Group by doctor and procedure
         $group: {
           _id: {
             doctorName: "$doctorInfo.name",
-            procedure: "$items.procedure" // Assuming you want to group by the procedure name directly from the items array
+            procedure: "$items.procedure",
+            branchId: "$BranchID",  
           },
-          totalInvoiceSum: { $sum: "$items.amountToBePaid" }, // Summing up the amountToBePaid for each procedure
-          count: { $sum: 1 } // Counting the number of times each procedure was performed
-        }
+          totalInvoiceSum: { $sum: "$items.amountToBePaid" },  
+          procedureCount: { $sum: 1 },  
+        },
       },
       {
-        // Optional: Sort the results, for example, by doctor name and then total invoice sum
         $sort: {
           "_id.doctorName": 1,
-          totalInvoiceSum: -1
-        }
+          totalInvoiceSum: -1,
+        },
       },
       {
-        // Project/format the output
         $project: {
           _id: 0,
           doctorName: "$_id.doctorName",
           procedure: "$_id.procedure",
+          branchId: "$_id.branchId",
           totalInvoiceSum: 1,
-          procedureCount: "$count"
-        }
-      }
+          procedureCount: 1,
+        },
+      },
     ]);
 
-
-    const convertToIST = async (Date) => {
-      return moment(Date).tz("Asia/Kolkata").format("DD/MM/YYYY");
-    };
+    const branches = await Branch.find({}, { _id: 1, branchName: 1 });
 
     const date = {
       todayStartData: await convertToIST(todayStart),
@@ -1905,16 +1892,180 @@ export const consolidated_reports = async (req, res) => {
       lastMonthEnd: await convertToIST(thisMonthEnd),
     };
 
-    res
-      .status(200)
-      .json({
-        today: data[0].today,
-        asOfLastMonth: data[0].asOfLastMonth,
-        date,
-        DoctorsColloction:doctorsResult
-      });
+    res.status(200).json({
+      today: data[0].today,
+      asOfLastMonth: data[0].asOfLastMonth,
+      date,
+      DoctorsColloction: doctorsResult,
+      branches,
+    });
   } catch (error) {
     console.error("Aggregation error:", error);
     res.status(500).send("Server error");
   }
+};
+
+export const consolidated_progress_reports = async (req, res) => {
+  // Calculate "today" start and end
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+
+  const todayEnd = new Date();
+  todayEnd.setHours(23, 59, 59, 999);
+
+  // Calculate "this month" start and end
+  const thisMonthStart = new Date();
+  thisMonthStart.setDate(1); // First day of the current month
+  thisMonthStart.setHours(0, 0, 0, 1);
+
+  const thisMonthEnd = new Date();
+  thisMonthEnd.setMonth(thisMonthEnd.getMonth() + 1);
+  thisMonthEnd.setDate(0); // Last day of the current month
+  thisMonthEnd.setHours(23, 59, 59, 999);
+
+  const now = new Date();
+
+  const aggregateNewPatientsByBranchAndDepartment = async (
+    startDate,
+    endDate
+  ) => {
+    return PatientInvoice.aggregate([
+      {
+        $match: {
+          createdAt: { $gte: startDate, $lte: endDate },
+        },
+      },
+      {
+        $lookup: {
+          from: "departments",
+          localField: "DepartmentID",
+          foreignField: "_id",
+          as: "department",
+        },
+      },
+      { $unwind: "$department" },
+      {
+        $lookup: {
+          from: "maindepartments",
+          pipeline: [
+            { $unwind: "$departments" },
+            { $match: { $expr: { $eq: ["$departments", "$$depId"] } } },
+          ],
+          as: "mainDepartment",
+          let: { depId: "$department._id" },
+        },
+      },
+      { $unwind: "$mainDepartment" },
+      {
+        $group: {
+          _id: {
+            BranchID: "$BranchID",
+            MainDepartmentID: "$mainDepartment._id",
+            DepartmentID: "$department._id",
+          },
+          newVisitors: { $sum: 1 },
+          departmentName: { $first: "$department.Name" },
+          mainDepartmentName: { $first: "$mainDepartment.Name" },
+        },
+      },
+      // Further group if necessary, or handle additional structuring in application logic
+    ]);
+  };
+
+  const todayResults = await aggregateNewPatientsByBranchAndDepartment(
+    todayStart,
+    todayEnd
+  );
+  const thisMonthResults = await aggregateNewPatientsByBranchAndDepartment(
+    thisMonthStart,
+    thisMonthEnd
+  );
+
+  const aggregateDailyUniquePatients = async (startOfMonth, endOfMonth) => {
+    return PatientInvoice.aggregate([
+      {
+        $match: {
+          createdAt: { $gte: startOfMonth, $lte: endOfMonth }
+        }
+      },
+      {
+        // Convert createdAt to a date string truncating the time part to easily group by day
+        $addFields: {
+          date: {
+            $dateToString: { format: "%Y-%m-%d", date: "$createdAt" }
+          }
+        }
+      },
+      {
+        // First group by date, branch, department, and patientID to get unique visits
+        $group: {
+          _id: {
+            date: "$date",
+            patientID: "$patientID",
+            BranchID: "$BranchID",
+            department: "$DepartmentID",
+          }
+        }
+      },
+      {
+        // Then group by date, branch, and department to count unique patients
+        $group: {
+          _id: { 
+            BranchID: "$_id.BranchID",
+            department: "$_id.department",
+          },
+          uniquePatients: { $sum: 1 }
+        }
+      },
+      {
+        // Optionally sort the results by date, then branch, then department
+        $sort: { "_id.date": 1, "_id.BranchID": 1, "_id.department": 1 }
+      },
+      {
+        // Project the desired output format
+        $project: {
+          _id: 0,
+          date: "$_id.date",
+          BranchID: "$_id.BranchID",
+          department: "$_id.department",
+          uniquePatients: 1
+        }
+      }
+    ]);
+  };
+   
+  
+  // Use the function for today's visitors
+  const todaysVisitors = await aggregateDailyUniquePatients(todayStart, todayEnd);
+  
+  // And for this month's visitors
+  const thisMonthsVisitors = await aggregateDailyUniquePatients(thisMonthStart, thisMonthEnd);
+  
+   
+  
+  const branches = await Branch.find({}, { _id: 1, branchName: 1 });
+  const MainDepartments = await MainDepartment.find({}, { _id: 1, departments: 1,Name:1,BranchID:1 }); 
+  
+  
+  const vistorResults = {
+    today: todaysVisitors,
+    thisMonth: thisMonthsVisitors,
+  }
+  
+  const results = {
+    today: todayResults,
+    thisMonth: thisMonthResults,
+  };
+
+ 
+  
+
+
+
+  res.status(200).json({
+    branches,
+    MainDepartments,
+    vistorResults,
+    results, 
+  });
 };
