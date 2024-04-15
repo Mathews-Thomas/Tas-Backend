@@ -163,6 +163,7 @@ export const BranchRegister = async (req, res) => {
     .json({ message: "Branch registered successfully", ...branchData });
 };
 //==============================================================================================
+
 export const AddRole = async (req, res) => {
   const { name, permissions, roleType, createdBy } = req.body;
   const validationErrors = await validateInputs([
@@ -183,12 +184,14 @@ export const AddRole = async (req, res) => {
   return res.status(200).json(NewRole);
 };
 //==============================================================================================
+
 export const addDepartment = async (req, res) => {
-  const { Name, BranchID } = req.body;
+  const { Name, BranchID, MainDepartmentID } = req.body;
   const { firstName, lastName } = req.verifiedUser;
   const validationErrors = await validateInputs([
     [Name, "name", "Department Name"],
     [BranchID, "objectID", "Branch"],
+    [MainDepartmentID, "objectID", "MainDepartment"],
   ]);
   const Role = req?.verifiedUser?.role?.roleType;
   if (Object.keys(validationErrors).length > 0)
@@ -197,6 +200,7 @@ export const addDepartment = async (req, res) => {
   let newDepartment = {
     Name,
     BranchID,
+    MainDepartmentID,
     createdBy: firstName + " " + lastName,
     status: Role === "admin" ? true : false,
     isApproved: Role === "admin" ? true : false,
@@ -212,17 +216,28 @@ export const addDepartment = async (req, res) => {
       .json({ errors: "Department Name is already existed" });
 
   Department.create(newDepartment)
-    .then((data) =>
-      res
-        .status(200)
-        .json({ message: "New Department created successfully", data })
-    )
+    .then(async (data) => {
+      try {
+        await MainDepartment.updateOne(
+          { _id: MainDepartmentID },
+          { $push: { departments: data._id } }
+        );
+        res
+          .status(200)
+          .json({ message: "New Department created successfully", data });
+      } catch (updateError) {
+        res.status(500).json({
+          message: "Failed to update MainDepartment",
+          error: updateError,
+        });
+      }
+    })
     .catch((err) => res.status(200).json({ message: "error", err }));
 };
 
 //==============================================================================================
 export const addMainDepartment = async (req, res) => {
-  const { Name, BranchID, DepartmentID } = req.body;
+  const { Name, BranchID } = req.body;
   const { firstName, lastName } = req.verifiedUser;
   const validationErrors = await validateInputs([
     [Name, "name", "Department Name"],
@@ -235,7 +250,6 @@ export const addMainDepartment = async (req, res) => {
   let newMainDepartment = {
     Name,
     BranchID,
-    departments: [...DepartmentID],
     createdBy: firstName + " " + lastName,
     status: Role === "admin" ? true : false,
     isApproved: Role === "admin" ? true : false,
@@ -258,11 +272,37 @@ export const addMainDepartment = async (req, res) => {
         .json({ message: "New Main Department created successfully", data })
     )
     .catch((err) => res.status(200).json({ message: "error", err }));
-};
+}; 
+//=========================================================================================
+export const viewMainDepartment  = async (req,res)=>{
+  try {
+    const { id } = req.params; 
+    const mainDepartment = await MainDepartment.findById(id);
+    
+    if (!mainDepartment) {
+      return res.status(404).send('Main Department not found');
+    }
+    
+    // Fetch each department individually
+    const departmentIds = mainDepartment.departments.map(id => new mongoose.Types.ObjectId(id));
+    const departments = await Department.find({
+      '_id': { $in: departmentIds }
+    }).populate('BranchID')
 
+    // Combine the results into one object
+    const result = {
+      ...mainDepartment.toObject(), // Convert document to plain object
+      departments: departments
+    };
+
+    res.status(200).json(result);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching main department data', error });
+  } 
+}
 //=========================================================================================
 export const edit_MainDepartment = async (req, res) => {
-  const { _id, Name, BranchID, DepartmentID } = req.body;
+  const { _id, Name, BranchID } = req.body;
 
   const { firstName, lastName } = req.verifiedUser;
   const Role = req?.verifiedUser?.role?.roleType;
@@ -289,7 +329,6 @@ export const edit_MainDepartment = async (req, res) => {
   let updateMainDepartment = {
     Name,
     BranchID,
-    departments: [...DepartmentID],
     createdBy: firstName + " " + lastName,
     status: Role === "admin" ? true : false,
     isApproved: Role === "admin" ? true : false,
@@ -551,6 +590,46 @@ export const Get_add_doctor = async (req, res) => {
     .json({ status: true, Branches, Departments, Procedures, Roles });
 };
 //==============================================================================================
+export const edit_Add_Ons = async (req, res) => {
+  const Departments = await Department.find({
+    status: true,
+    isApproved: true,
+  })
+    .populate("BranchID")
+    .sort({ BranchID: 1 });
+  const MainDepartments = await MainDepartment.find({
+    status: true,
+    isApproved: true,
+  }).populate("BranchID");
+  const Branches = await Branch.find({ status: true, isApproved: true });
+  const Procedures = await Procedure.find({ status: true, isApproved: true })
+    .populate("BranchID")
+    .sort({ BranchID: 1 });
+  const Roles = await Role.find({ status: true });
+
+  if (!Branches)
+    return res
+      .status(400)
+      .json({ message: "Branches Not added", status: false });
+  if (!Departments)
+    return res
+      .status(400)
+      .json({ message: "Departments Not available", status: false });
+  if (!Procedures)
+    return res
+      .status(400)
+      .json({ message: "Procedures Not available", status: false });
+
+  return res.status(200).json({
+    status: true,
+    Branches,
+    Departments,
+    Procedures,
+    Roles,
+    MainDepartments,
+  });
+};
+//==============================================================================================
 export const get_addOns = async (req, res) => {
   const Departments = await Department.find({
     status: true,
@@ -558,6 +637,10 @@ export const get_addOns = async (req, res) => {
   }).populate("BranchID");
   const Branches = await Branch.find({ status: true, isApproved: true });
   const roleType = await Role.find({ status: true });
+  const MainDepartments = await MainDepartment.find({
+    status: true,
+    isApproved: true,
+  }).populate("BranchID")
 
   if (!Branches)
     return res
@@ -572,7 +655,7 @@ export const get_addOns = async (req, res) => {
 
   return res
     .status(200)
-    .json({ status: true, Branches, Departments, roleType });
+    .json({ status: true, Branches, Departments, roleType, MainDepartments });
 };
 //==============================================================================================
 export const list_addOns = async (req, res) => {
@@ -591,7 +674,7 @@ export const list_addOns = async (req, res) => {
     Alert.find().sort({ createdAt: -1 }),
     MainDepartment.find(Role === "user" ? { BranchID } : {}).sort({
       createdAt: -1,
-    }),
+    })
   ]);
 
   const [
@@ -1144,7 +1227,7 @@ export const AlertEdit = async (req, res) => {
 //==============================================================================================
 
 export const departmntEdit = async (req, res) => {
-  const { _id, Name } = req.body;
+  const { _id, Name, MainDepartmentID } = req.body;
   const value = req.path.split("/")[1];
   const collectionName = req.path.split("/")[1];
   const Model = models[collectionName];
@@ -1155,26 +1238,45 @@ export const departmntEdit = async (req, res) => {
 
   const validationErrors = await validateInputs([
     [Name, "name", "Department Name"],
+    [MainDepartmentID, "objectID", "MainDepartment"],
   ]);
 
   if (Object.keys(validationErrors).length > 0)
     return res.status(400).json({ errors: validationErrors });
 
+  const OldDeprtment = await Department.findById(_id);
+
   const editedDepartment = {
     Name,
+    MainDepartmentID,
   };
-  const updatedDocument = await Model.updateOne(
-    { _id },
-    { $set: editedDepartment }
-  );
 
-  if (updatedDocument.matchedCount === 0) {
-    return res.status(404).send("Document not found");
-  }
-  res.status(200).json({
-    message: collectionName + "updated Succussfully",
-    updatedDocument,
+  Model.findByIdAndUpdate(
+    { _id },
+    { $set: editedDepartment },
+    { new: true }
+  ).then(async (resp) => {
+    if (
+      !(
+        OldDeprtment.MainDepartmentID.toString() ===
+        resp.MainDepartmentID.toString()
+      )
+    ) {
+      await MainDepartment.updateOne(
+        { _id: OldDeprtment.MainDepartmentID },
+        { $pull: { departments: resp._id } }
+      );
+      await MainDepartment.updateOne(
+        { _id: resp.MainDepartmentID },
+        { $push: { departments: resp._id } }
+      );
+    }
+    res.status(200).json({
+      message: collectionName + "updated Succussfully",
+      updatedDocument:resp,
+    });
   });
+
 };
 
 //=========================================================================================
@@ -1696,7 +1798,6 @@ export const adminhome_reports = async (req, res) => {
 
 export const consolidated_reports = async (req, res) => {
   const { BranchID } = req.query;
- 
 
   try {
     // Calculate "today" start and end
@@ -1824,7 +1925,7 @@ export const consolidated_reports = async (req, res) => {
     }
 
     let matchtoday = {
-      createdAt: { $gte: todayStart, $lte: todayEnd }
+      createdAt: { $gte: todayStart, $lte: todayEnd },
     };
 
     if (isValidObjectId(BranchID)) {
@@ -1835,19 +1936,21 @@ export const consolidated_reports = async (req, res) => {
       {
         $facet: {
           today: [{ $match: matchtoday }, ...extPipline],
-          asOfLastMonth: [{ $match: matchAsOfLastMonth,},...extPipline],
+          asOfLastMonth: [{ $match: matchAsOfLastMonth }, ...extPipline],
         },
       },
     ]);
 
-    const doctorsMatch = {createdAt: { $gte: thisMonthStart, $lte: thisMonthEnd }}
+    const doctorsMatch = {
+      createdAt: { $gte: thisMonthStart, $lte: thisMonthEnd },
+    };
     if (isValidObjectId(BranchID)) {
       doctorsMatch["BranchID"] = new mongoose.Types.ObjectId(BranchID);
     }
 
     const doctorsResult = await PatientInvoice.aggregate([
       {
-        $match: doctorsMatch
+        $match: doctorsMatch,
       },
       {
         $lookup: {
@@ -1936,79 +2039,85 @@ export const consolidated_progress_reports = async (req, res) => {
   thisMonthEnd.setDate(0); // Last day of the current month
   thisMonthEnd.setHours(23, 59, 59, 999);
 
-  const now = new Date();
-
-  
-  const aggregateNewPatientsByBranchAndDepartment = async (
-    startDate,
-    endDate
-  ) => {
-    const VsitorTypeMatch = {createdAt: { $gte: startDate, $lte: endDate }}
+  const NewPatients = async (startDate, endDate, BranchID = null) => {
+    let visitorTypeMatch = { createdAt: { $gte: startDate, $lte: endDate } };
     if (isValidObjectId(BranchID)) {
-      VsitorTypeMatch["BranchID"] = new mongoose.Types.ObjectId(BranchID);
+      visitorTypeMatch["BranchID"] = new mongoose.Types.ObjectId(BranchID);
     }
 
     return PatientInvoice.aggregate([
       {
-        $match: VsitorTypeMatch
+        $match: visitorTypeMatch,
+      },
+      {
+        $lookup: {
+          from: "patients",
+          localField: "patientID",
+          foreignField: "_id",
+          as: "patientDetails",
+        },
       },
       {
         $lookup: {
           from: "departments",
           localField: "DepartmentID",
           foreignField: "_id",
-          as: "department",
+          as: "departmentDetails",
         },
       },
-      { $unwind: "$department" },
+      {
+        $unwind: "$departmentDetails",
+      },
       {
         $lookup: {
-          from: "maindepartments",
-          pipeline: [
-            { $unwind: "$departments" },
-            { $match: { $expr: { $eq: ["$departments", "$$depId"] } } },
-          ],
-          as: "mainDepartment",
-          let: { depId: "$department._id" },
+          from: "mainDepartments",
+          localField: "departmentDetails.mainDepartmentID", // Assuming this field links to mainDepartments
+          foreignField: "_id",
+          as: "mainDepartmentDetails",
         },
       },
-      { $unwind: "$mainDepartment" },
+      {
+        $unwind: "$mainDepartmentDetails",
+      },
       {
         $group: {
           _id: {
-            BranchID: "$BranchID",
-            MainDepartmentID: "$mainDepartment._id",
-            DepartmentID: "$department._id",
+            branchID: "$BranchID",
+            mainDepartmentName: "$mainDepartmentDetails.Name",
           },
-          newVisitors: { $sum: 1 },
-          departmentName: { $first: "$department.Name" },
-          mainDepartmentName: { $first: "$mainDepartment.Name" },
+          newPatientsToday: { $sum: 1 },
         },
       },
-      // Further group if necessary, or handle additional structuring in application logic
+      {
+        $group: {
+          _id: "$_id.branchID",
+          mainDepartments: {
+            $push: {
+              mainDepartmentName: "$_id.mainDepartmentName",
+              count: "$newPatientsToday",
+            },
+          },
+          totalNewPatients: { $sum: "$newPatientsToday" },
+        },
+      },
     ]);
   };
 
-  const todayResults = await aggregateNewPatientsByBranchAndDepartment(
-    todayStart,
-    todayEnd
-  );
-  const thisMonthResults = await aggregateNewPatientsByBranchAndDepartment(
-    thisMonthStart,
-    thisMonthEnd
-  );
+  const todayResults = await NewPatients(todayStart, todayEnd);
+  const thisMonthResults = await NewPatients(thisMonthStart, thisMonthEnd);
 
-  const aggregateDailyUniquePatients = async (startOfMonth, endOfMonth) => {
-    const VsitorTypeMatch = {createdAt: { $gte: startOfMonth, $lte: endOfMonth }}
+  const VisitedUniquePatients = async (startOfMonth, endOfMonth) => {
+    const VsitorTypeMatch = {
+      createdAt: { $gte: startOfMonth, $lte: endOfMonth },
+    };
     if (isValidObjectId(BranchID)) {
       VsitorTypeMatch["BranchID"] = new mongoose.Types.ObjectId(BranchID);
     }
     return PatientInvoice.aggregate([
       {
-        $match: VsitorTypeMatch
+        $match: VsitorTypeMatch,
       },
       {
-        // Convert createdAt to a date string truncating the time part to easily group by day
         $addFields: {
           date: {
             $dateToString: { format: "%Y-%m-%d", date: "$createdAt" },
@@ -2016,7 +2125,6 @@ export const consolidated_progress_reports = async (req, res) => {
         },
       },
       {
-        // First group by date, branch, department, and patientID to get unique visits
         $group: {
           _id: {
             date: "$date",
@@ -2027,7 +2135,6 @@ export const consolidated_progress_reports = async (req, res) => {
         },
       },
       {
-        // Then group by date, branch, and department to count unique patients
         $group: {
           _id: {
             BranchID: "$_id.BranchID",
@@ -2037,11 +2144,9 @@ export const consolidated_progress_reports = async (req, res) => {
         },
       },
       {
-        // Optionally sort the results by date, then branch, then department
         $sort: { "_id.date": 1, "_id.BranchID": 1, "_id.department": 1 },
       },
       {
-        // Project the desired output format
         $project: {
           _id: 0,
           date: "$_id.date",
@@ -2054,13 +2159,10 @@ export const consolidated_progress_reports = async (req, res) => {
   };
 
   // Use the function for today's visitors
-  const todaysVisitors = await aggregateDailyUniquePatients(
-    todayStart,
-    todayEnd
-  );
+  const todaysVisitors = await VisitedUniquePatients(todayStart, todayEnd);
 
   // And for this month's visitors
-  const thisMonthsVisitors = await aggregateDailyUniquePatients(
+  const thisMonthsVisitors = await VisitedUniquePatients(
     thisMonthStart,
     thisMonthEnd
   );
