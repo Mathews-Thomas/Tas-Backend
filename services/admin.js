@@ -2045,66 +2045,109 @@ export const consolidated_progress_reports = async (req, res) => {
       visitorTypeMatch["BranchID"] = new mongoose.Types.ObjectId(BranchID);
     }
 
-    return PatientInvoice.aggregate([
+    return Patient.aggregate([
       {
         $match: visitorTypeMatch,
       },
-      {
-        $lookup: {
-          from: "patients",
-          localField: "patientID",
-          foreignField: "_id",
-          as: "patientDetails",
+      
+        {
+          '$lookup': {
+            'from': 'patientinvoices', 
+            'localField': '_id', 
+            'foreignField': 'patientID', 
+            'as': 'invoices'
+          }
+        }, {
+          '$unwind': '$invoices'
+        }, {
+          '$match': {
+            '$expr': {
+              '$and': [
+                {
+                  '$eq': [
+                    {
+                      '$dateToString': {
+                        'format': '%Y-%m-%d', 
+                        'date': '$createdAt'
+                      }
+                    }, {
+                      '$dateToString': {
+                        'format': '%Y-%m-%d', 
+                        'date': '$invoices.createdAt'
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          }
         },
-      },
-      {
-        $lookup: {
-          from: "departments",
-          localField: "DepartmentID",
-          foreignField: "_id",
-          as: "departmentDetails",
-        },
-      },
-      {
-        $unwind: "$departmentDetails",
-      },
-      {
-        $lookup: {
-          from: "mainDepartments",
-          localField: "departmentDetails.mainDepartmentID", // Assuming this field links to mainDepartments
-          foreignField: "_id",
-          as: "mainDepartmentDetails",
-        },
-      },
-      {
-        $unwind: "$mainDepartmentDetails",
-      },
-      {
-        $group: {
-          _id: {
-            branchID: "$BranchID",
-            mainDepartmentName: "$mainDepartmentDetails.Name",
-          },
-          newPatientsToday: { $sum: 1 },
-        },
-      },
-      {
-        $group: {
-          _id: "$_id.branchID",
-          mainDepartments: {
-            $push: {
-              mainDepartmentName: "$_id.mainDepartmentName",
-              count: "$newPatientsToday",
-            },
-          },
-          totalNewPatients: { $sum: "$newPatientsToday" },
-        },
-      },
+
+         {
+          '$lookup': {
+            'from': 'maindepartments', 
+            'localField': 'invoices.MainDepartmentID', 
+            'foreignField': '_id', 
+            'as': 'maindepartments'
+          }
+        }, {
+          '$unwind': {
+            'path': '$maindepartments'
+          }
+        }, {
+          '$group': {
+            '_id': {
+              'mainDepartment': '$invoices.MainDepartmentID', 
+              'branch': '$BranchID', 
+              'date': {
+                '$dateToString': {
+                  'format': '%Y-%m-%d', 
+                  'date': '$createdAt'
+                }
+              }
+            }, 
+            'name': {
+              '$addToSet': '$Name'
+            }, 
+            'department': {
+              '$first': '$maindepartments.Name'
+            }, 
+            'count': {
+              '$sum': 1
+            }
+          }
+        }, {
+          '$project': {
+            '_id': 0, 
+            'date': '$_id.date', 
+            'mainDepartment': '$_id.mainDepartment', 
+            'branch': '$_id.branch', 
+            'count': '$count', 
+            'name': '$name', 
+            'department': '$department'
+          }
+        }, {
+          '$group': {
+            '_id': {
+              'date': '$date'
+            }, 
+            'count': {
+              '$sum': 1
+            }, 
+            'department': {
+              '$first': '$department'
+            }
+          }
+        }
+      
     ]);
   };
 
   const todayResults = await NewPatients(todayStart, todayEnd);
   const thisMonthResults = await NewPatients(thisMonthStart, thisMonthEnd);
+
+
+   
 
   const VisitedUniquePatients = async (startOfMonth, endOfMonth) => {
     const VsitorTypeMatch = {

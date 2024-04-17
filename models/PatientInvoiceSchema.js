@@ -6,6 +6,7 @@ import Department from './DepartmentSchema.js';
 import Branch from './BranchSchema.js';
 import PaymentMethod from './PaymentMethodSchema.js';
 import { addCreatedAtIST } from '../Commonfn/ISTFormat.js';
+import MainDepartment from './HeadDepartmentSchema.js';
 
 
 const itemsSchema = new mongoose.Schema({
@@ -81,6 +82,11 @@ const patientInvoiceSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         required: true,
         ref: Department
+    },
+    MainDepartmentID: {
+        type: mongoose.Schema.Types.ObjectId,
+        required: true,
+        ref: MainDepartment
     },
     items:[itemsSchema],
     amountToBePaid:{

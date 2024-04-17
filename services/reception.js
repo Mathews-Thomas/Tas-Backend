@@ -191,6 +191,7 @@ export const getPatientList = async (req, res) => {
 export const addInvoice = async (req, res) => {
   const {
     invoiceID,
+    MainDepartmentID,
     patient,
     doctorID,
     DepartmentID,
@@ -208,6 +209,7 @@ export const addInvoice = async (req, res) => {
   const validationErrors = await validateInputs([
     [doctorID, "objectID", "doctorID"],
     [DepartmentID, "objectID", "DepartmentID"],
+    [MainDepartmentID, "objectID", "MainDepartmentID"],
     [paymentMethodID, "objectID", "paymentMethodID"],
     [patient._id, "objectID", "patientID"],
     [invoiceID, "name", "invoiceID"],
@@ -224,6 +226,7 @@ export const addInvoice = async (req, res) => {
     patientID: patient._id,
     doctorID: doctorID,
     DepartmentID: DepartmentID,
+    MainDepartmentID:MainDepartmentID,
     paymentMethod: {
       paymentMethod,
       paymentMethodID,
@@ -527,6 +530,8 @@ export const edit_Patient = async (req, res) => {
 export const editInvoice = async (req, res) => {
   const {
     invoiceID,
+    MainDepartmentID,
+    
     patient,
     doctorID,
     DepartmentID,
@@ -544,6 +549,7 @@ export const editInvoice = async (req, res) => {
     [doctorID, "objectID", "doctorID"],
     [DepartmentID, "objectID", "DepartmentID"],
     [paymentMethodID, "objectID", "paymentMethodID"],
+    [MainDepartmentID, "objectID", "MainDepartmentID"],
     [patient._id, "objectID", "patientID"],
     [invoiceID, "name", "invoiceID"],
     [totalAmount, "price", "totalAmount"],
@@ -574,6 +580,7 @@ export const editInvoice = async (req, res) => {
       patientID: patient._id,
       doctorID,
       DepartmentID,
+      MainDepartmentID:MainDepartmentID,
       paymentMethod: {
         paymentMethod,
         paymentMethodID,
