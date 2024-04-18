@@ -36,6 +36,7 @@ const convertToIST = async (Date) => {
 };
 
 export const employeeRegister = async (req, res) => {
+  
   const {
     firstName,
     lastName,
@@ -85,6 +86,7 @@ export const employeeRegister = async (req, res) => {
     designation,
     role,
     createdAt,
+    createdBy: req?.verifiedUser?.firstName + " " + req?.verifiedUser?.lastName,
     securityCredentials: {
       loginId,
       password: hashedPassword,
@@ -1378,6 +1380,7 @@ export const EmployeeEdit = async (req, res) => {
     designation,
     age,
     Gender,
+    createdBy: req?.verifiedUser?.firstName + " " + req?.verifiedUser?.lastName,
     address,
   };
 
