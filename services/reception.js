@@ -11,7 +11,34 @@ import Procedure from "../models/ProcedureSchema.js";
 import PatientInvoice from "../models/PatientInvoiceSchema.js";
 import PaymentMethod from "../models/PaymentMethodSchema.js";
 import Alert from "../models/AlertSchema.js";
-import mongoose from "mongoose";
+import mongoose from "mongoose";  
+
+// ============================================================
+export const branchLogin = async (req,res)=>{
+  const {loginId,password} = req.body
+const validationErrors = validateInputs([
+  [loginId,"loginId","loginId"],
+  [password,"password","loginId"]
+])
+if (Object.keys(validationErrors).length > 0) {
+  return res.status(400).json({ errors: validationErrors });
+}
+
+const branch = await Branch.findOne({ "securityCredentials.loginId": loginId });
+if (!branch) {
+  return res.status(401).json({ error: "Username mismatched" });
+}
+const isPasswordMatch = await bcrypt.compare(password, branch.securityCredentials.password);
+if (!isPasswordMatch) {
+  return res.status(401).json({ error: "Password mismatched" });
+}
+
+const branchData = branch.toObject();
+delete branchData.securityCredentials.password; 
+const token = jwtSign(branchData._id.toString())
+     return res.status(200).json({ Branch: branchData,token:token });
+
+}
 
 // ================================================
 export const employeeLogin = async (req, res) => {
@@ -266,11 +293,11 @@ export const addInvoice = async (req, res) => {
       const visitorTypeUpdate = {}; 
 
       if (patientCreatedAt.toDateString() === today.toDateString()) { 
-        visitorTypeUpdate.VisitorTypeID = "65d482a7bcd904686ffb8631"; // Use the actual ID for "New" 
+        visitorTypeUpdate.VisitorTypeID = "66210e15d067cb8d6252f07a"; // Use the actual ID for "New" 
       } else if (daysSinceLastConsultation <= 30) { 
-        visitorTypeUpdate.VisitorTypeID = "65d482ecbcd904686ffb8636"; // Use the actual ID for "Visit" 
+        visitorTypeUpdate.VisitorTypeID = "66210e4ad067cb8d6252f087"; // Use the actual ID for "Visit" 
       } else {  
-        visitorTypeUpdate.VisitorTypeID = "65d48337bcd904686ffb863b"; // Use the actual ID for "Renew"
+        visitorTypeUpdate.VisitorTypeID = "66210ea8d067cb8d6252f094"; // Use the actual ID for "Renew"
       }
    
       Object.assign(updateObject, visitorTypeUpdate);

@@ -4,82 +4,91 @@ import { report_filter,consolidated_progress_reports,edit_MainDepartment, user_d
 import auth from "../../middleware/EmployeeAuth.js"
 
 const router = express.Router()
-//- /admin/ 
+// Employee
 router.post("/employee-register", auth(), serviceHandler(employeeRegister))
 router.put("/Employee/edit", auth(), serviceHandler(EmployeeEdit))
 router.put("/Employee/updateStatus", auth(), serviceHandler(updateStatus))
 router.put("/Employee/approve", auth(), serviceHandler(approve))
 
-
+// Department 
 router.post("/add-Department", auth(), serviceHandler(addDepartment))
 router.put("/Department/edit", auth(), serviceHandler(departmntEdit))
 router.put("/Department/updateStatus", auth(), serviceHandler(updateStatus))
 router.put("/Department/approve", auth(), serviceHandler(approve))
 
-
+// Main Department
 router.post("/MainDepartment", auth(), serviceHandler(addMainDepartment))
+router.put("/MainDepartment/edit", auth(), serviceHandler(edit_MainDepartment))
 router.get("/Viw_MainDepartment/:id", auth(), serviceHandler(viewMainDepartment))
 router.put("/MainDepartment/updateStatus", auth(), serviceHandler(updateStatus))
 router.put("/MainDepartment/approve", auth(), serviceHandler(approve))
-router.put("/MainDepartment/edit", auth(), serviceHandler(edit_MainDepartment))
 
-
-
+// Branch 
 router.post("/branch-register", auth(), serviceHandler(BranchRegister))
-router.post("/add-New-Role", serviceHandler(AddRole))
-router.post("/add-patientType", auth(), serviceHandler(addPatientType))
-router.post("/add-visitorType", auth(), serviceHandler(addVisitorType))
-router.post("/add-paymentMethod", auth(), serviceHandler(addPaymentMethod))
-router.post("/add-procedure", auth(), serviceHandler(addprocedure))
-router.post("/add-doctor", auth(), serviceHandler(adddoctor))
+router.put("/Branch/edit", auth(), serviceHandler(BranchEdit))
+router.put("/Branch/updateStatus", auth(), serviceHandler(updateStatus))
+router.put("/Branch/approve", auth(), serviceHandler(approve))
+router.get("/Get-Branches", auth(), serviceHandler(get_Branches))
 
+// Doctor 
+router.post("/add-doctor", auth(), serviceHandler(adddoctor))
 router.get("/add-doctor", auth(), serviceHandler(Get_add_doctor))
+router.put("/Doctor/edit", auth(), serviceHandler(editDoctor))
+router.get("/list-doctors", auth(), serviceHandler(list_doctors))
+router.put("/Doctor/approve", auth(), serviceHandler(approve))
+router.put("/Doctor/updateStatus", auth(), serviceHandler(updateStatus))
+
+// patient type
+router.post("/add-patientType", auth(), serviceHandler(addPatientType))
+router.put("/PatientType/updateStatus", auth(), serviceHandler(updateStatus))
+router.put("/PatientType/edit", auth(), serviceHandler(Edit))
+router.put("/PatientType/approve", auth(), serviceHandler(approve))
+
+// Visitor type 
+router.post("/add-visitorType", auth(), serviceHandler(addVisitorType))
+router.put("/VisitorType/approve", auth(), serviceHandler(approve))
+router.put("/VisitorType/updateStatus", auth(), serviceHandler(updateStatus))
+router.put("/VisitorType/edit", auth(), serviceHandler(Edit))
+
+// Payment Method
+router.post("/add-paymentMethod", auth(), serviceHandler(addPaymentMethod))
+router.put("/PaymentMethod/updateStatus", auth(), serviceHandler(updateStatus))
+router.put("/PaymentMethod/approve", auth(), serviceHandler(approve))
+router.put("/PaymentMethod/edit", auth(), serviceHandler(PaymentMethodEdit))
+
+// Add Ons
 router.get("/edit-addOns", auth(), serviceHandler(edit_Add_Ons))
 router.get("/get-addOns", auth(), serviceHandler(get_addOns))
 router.get("/list-addOns", auth(), serviceHandler(list_addOns))
-router.get("/list-doctors", auth(), serviceHandler(list_doctors))
+
+// Alert
 router.post("/set-alert", auth(), serviceHandler(set_alert))
-router.get("/get-user", auth(), serviceHandler(user_details))
-
-router.put("/Branch/updateStatus", auth(), serviceHandler(updateStatus))
-router.put("/Doctor/updateStatus", auth(), serviceHandler(updateStatus))
-router.put("/PatientType/updateStatus", auth(), serviceHandler(updateStatus))
-router.put("/PaymentMethod/updateStatus", auth(), serviceHandler(updateStatus))
-router.put("/Procedure/updateStatus", auth(), serviceHandler(updateStatus))
-router.put("/VisitorType/updateStatus", auth(), serviceHandler(updateStatus))
 router.put("/Alert/updateStatus", auth(), serviceHandler(updateStatus))
-
-router.put("/Branch/approve", auth(), serviceHandler(approve))
-router.put("/Doctor/approve", auth(), serviceHandler(approve))
-router.put("/PatientType/approve", auth(), serviceHandler(approve))
-router.put("/PaymentMethod/approve", auth(), serviceHandler(approve))
-router.put("/Procedure/approve", auth(), serviceHandler(approve))
-router.put("/VisitorType/approve", auth(), serviceHandler(approve))
-
-router.put("/VisitorType/edit", auth(), serviceHandler(Edit))
-router.put("/PatientType/edit", auth(), serviceHandler(Edit))
-
-router.put("/Doctor/edit", auth(), serviceHandler(editDoctor))
-
-router.put("/PaymentMethod/edit", auth(), serviceHandler(PaymentMethodEdit))
-router.put("/Branch/edit", auth(), serviceHandler(BranchEdit))
 router.put("/Alert/edit", auth(), serviceHandler(AlertEdit))
+
+// Procedure 
+router.post("/add-procedure", auth(), serviceHandler(addprocedure))
+router.put("/Procedure/updateStatus", auth(), serviceHandler(updateStatus))
+router.put("/Procedure/approve", auth(), serviceHandler(approve))
 router.put("/Procedure/edit", auth(), serviceHandler(ProcedureEdit))
 
-router.get("/Get-Branches", auth(), serviceHandler(get_Branches))
+// Reports 
 router.get('/report/filter', serviceHandler(report_filter))
 router.get('/report/filterOptions', serviceHandler(report_filter_options))
+router.get("/adminhome-reports", auth(), serviceHandler(adminhome_reports))
+router.get("/consolidated-reports",   serviceHandler(consolidated_reports))
+router.get("/consolidated-progress-reports",   serviceHandler(consolidated_progress_reports))
 
+// Task
 router.delete("/task/delete-task", auth(), serviceHandler(delete_task))
 router.put("/task/updatetaskStatus", auth(), serviceHandler(updatetaskStatus))
 router.put("/task/edit-task", auth(), serviceHandler(edit_task))
 router.post("/set-task", auth(), serviceHandler(set_task))
 router.get("/get-task", auth(), serviceHandler(get_task))
 
-router.get("/adminhome-reports", auth(), serviceHandler(adminhome_reports))
-router.get("/consolidated-reports",   serviceHandler(consolidated_reports))
-router.get("/consolidated-progress-reports",   serviceHandler(consolidated_progress_reports))
-
+// Extra 
+router.get("/get-user", auth(), serviceHandler(user_details))
+router.post("/add-New-Role", serviceHandler(AddRole))
 
 const adminRouter = router
 export default adminRouter

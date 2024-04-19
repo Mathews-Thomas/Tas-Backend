@@ -1367,11 +1367,10 @@ export const EmployeeEdit = async (req, res) => {
     [Gender, "Gender", "gender"],
     [address, "address", "Address"],
   ]);
-
+  
   if (Object.keys(validationErrors).length > 0) {
     return res.status(400).json({ errors: validationErrors });
   }
-
   const editedEmployee = {
     firstName,
     lastName,
