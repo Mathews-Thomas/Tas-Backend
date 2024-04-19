@@ -26,11 +26,11 @@ if (Object.keys(validationErrors).length > 0) {
 
 const branch = await Branch.findOne({ "securityCredentials.loginId": loginId });
 if (!branch) {
-  return res.status(401).json({ error: "Username mismatched" });
+  return res.status(403).json({ error: "Username mismatched" });
 }
 const isPasswordMatch = await bcrypt.compare(password, branch.securityCredentials.password);
 if (!isPasswordMatch) {
-  return res.status(401).json({ error: "Password mismatched" });
+  return res.status(403).json({ error: "Password mismatched" });
 }
 
 const branchData = branch.toObject();
@@ -55,7 +55,7 @@ export const employeeLogin = async (req, res) => {
   const employee = await Employee.findOne({
     "securityCredentials.loginId": loginId,
   }).populate("role");
-  if (!employee) return res.status(401).json({ err: "Username mismatched" });
+  if (!employee) return res.status(403).json({ err: "Username mismatched" });
   if (!employee.status || !employee.isApproved)
     return res.status(403).json({
       err: "Access denied. Please contact the administrator.",
@@ -66,7 +66,7 @@ export const employeeLogin = async (req, res) => {
     employee.securityCredentials.password
   );
   if (!isPasswordMatch)
-    return res.status(401).json({ err: "Password mismatched" });
+    return res.status(403).json({ err: "Password mismatched" });
 
   const employeeData = employee.toObject();
   delete employeeData.securityCredentials.password; // Remove password for security
@@ -358,22 +358,22 @@ export const getInviuceDropdowns = async (req, res) => {
   if(!Doctors.length){
     return res
   .status(404)
-  .send({ errors: "One or more Doctors lists are empty." }); 
+  .send({ errors: "Doctors lists are empty." }); 
   }
   if(!Procedures.length){
     return res
   .status(404)
-  .send({ errors: "One or more Procedures lists are empty." }); 
+  .send({ errors: "Procedures lists are empty." }); 
   }
   if(!VisitorTypes.length){
     return res
   .status(404)
-  .send({ errors: "One or more VisitorTypes lists are empty." }); 
+  .send({ errors: "VisitorTypes lists are empty." }); 
   }
   if(!PatientTypes.length){
     return res
   .status(404)
-  .send({ errors: "One or more PatientTypes lists are empty." }); 
+  .send({ errors: "PatientTypes lists are empty." }); 
   }
 
   if (!PatientID)
