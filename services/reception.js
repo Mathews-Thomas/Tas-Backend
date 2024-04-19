@@ -273,8 +273,7 @@ export const addInvoice = async (req, res) => {
       item.ProcedureID === "consultationProcedureID"
   ); 
  
-
-
+ 
   PatientInvoice.create(newInvoice)
     .then((resp) => {
       const updateObject = { $push: { Invoices: resp?._id } };
@@ -355,16 +354,26 @@ export const getInviuceDropdowns = async (req, res) => {
   }`;
 
   // Check for empty results
-
-  if (
-    !Doctors.length ||
-    !Procedures.length ||
-    !VisitorTypes.length ||
-    !PatientTypes.length
-  ) {
+  
+  if(!Doctors.length){
     return res
-      .status(404)
-      .send({ errors: "One or more dropdown lists are empty." });
+  .status(404)
+  .send({ errors: "One or more Doctors lists are empty." }); 
+  }
+  if(!Procedures.length){
+    return res
+  .status(404)
+  .send({ errors: "One or more Procedures lists are empty." }); 
+  }
+  if(!VisitorTypes.length){
+    return res
+  .status(404)
+  .send({ errors: "One or more VisitorTypes lists are empty." }); 
+  }
+  if(!PatientTypes.length){
+    return res
+  .status(404)
+  .send({ errors: "One or more PatientTypes lists are empty." }); 
   }
 
   if (!PatientID)
