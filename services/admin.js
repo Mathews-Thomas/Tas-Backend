@@ -550,7 +550,7 @@ export const adddoctor = async (req, res) => {
   };
 
   const DoctorExists = await Doctor.findOne({
-    name: new RegExp("^" + name.trim() + "$", "i"),
+    name: new RegExp("^" + name.trim() + "$", "i"),BranchID
   });
   if (DoctorExists)
     return res.status(400).json({ error: "Doctor already exists" });
