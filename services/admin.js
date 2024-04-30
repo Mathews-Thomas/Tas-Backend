@@ -593,6 +593,12 @@ export const Get_add_doctor = async (req, res) => {
 };
 //==============================================================================================
 export const edit_Add_Ons = async (req, res) => {
+  const BranchID = req.query.BranchID || " "
+  let branchId = { }
+  if (isValidObjectId(BranchID)) {
+    branchId.BranchID = new mongoose.Types.ObjectId(BranchID);
+  }
+
   const Departments = await Department.find({
     status: true,
     isApproved: true,
@@ -604,7 +610,7 @@ export const edit_Add_Ons = async (req, res) => {
     isApproved: true,
   }).populate("BranchID");
   const Branches = await Branch.find({ status: true, isApproved: true });
-  const Procedures = await Procedure.find({ status: true, isApproved: true })
+  const Procedures = await Procedure.find({ status: true, isApproved: true, ...branchId})
     .populate("BranchID")
     .sort({ BranchID: 1 });
   const Roles = await Role.find({ status: true });
@@ -751,6 +757,7 @@ export const list_doctors = async (req, res) => {
   const page = parseInt(req.query.page, 10) || 1;
   const limit = parseInt(req.query.limit, 10) || 10;
   const skip = (page - 1) * limit;
+  const BranchID = req.query.BranchID
 
   const searchQuery = req.query.search
     ? {
@@ -767,6 +774,10 @@ export const list_doctors = async (req, res) => {
     const branchesPromise = Branch.find();
     const departmentsPromise = Department.find();
 
+    if(BranchID){
+      searchQuery.BranchID = BranchID
+    }
+
     // Apply pagination only to the Doctor.find() query
     const doctorsPromise = Doctor.find(searchQuery)
       .populate({ path: "procedureIds", select: "procedure _id" })
@@ -774,7 +785,7 @@ export const list_doctors = async (req, res) => {
       .limit(limit);
 
     // Fetch the total count of doctors for pagination info
-    const countPromise = Doctor.countDocuments();
+    const countPromise = Doctor.countDocuments(searchQuery);
 
     const [Branches, departments, doctors, totalDoctors] = await Promise.all([
       branchesPromise,
@@ -791,7 +802,7 @@ export const list_doctors = async (req, res) => {
     const DepartmentMap = departments.reduce((map, departmnt) => {
       map[departmnt._id] = departmnt.Name;
       return map;
-    }, {});
+    }, {}); 
 
     const Doctors = doctors.map((dr) => ({
       ...dr.toObject({ virtuals: true }),
@@ -1069,6 +1080,8 @@ export const report_filter = async (req, res) => {
     globalSums,
   });
 };
+
+
 
 export const report_filter_options = async (req, res) => {
   const [
@@ -1636,15 +1649,19 @@ export const get_task = async (req, res) => {
   res.json({ tasks: employeeWithTasks.tasks });
 };
 
+
+
+
 //=====================================================================
 export const adminhome_reports = async (req, res) => {
+  const { BranchID } = req.query; 
+  
   try {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const day = new Date()
+ 
 
-    const startOfDay = new Date(today);
-    const endOfDay = new Date(today);
-    endOfDay.setHours(23, 59, 59, 999);
+    const startOfDay = moment(day).tz("Asia/Kolkata").startOf('day').toDate();
+    const endOfDay = moment(startOfDay).tz("Asia/Kolkata").endOf('day').toDate();
 
     const invoiceAggregationPipeline = [
       {
@@ -1665,6 +1682,15 @@ export const adminhome_reports = async (req, res) => {
       },
     ];
 
+
+    if (isValidObjectId(BranchID)) {
+      invoiceAggregationPipeline.unshift({
+        $match: {
+          BranchID: new mongoose.Types.ObjectId(BranchID)
+        }
+      });
+    }
+    
     const invoiceResult = await PatientInvoice.aggregate(
       invoiceAggregationPipeline
     );
@@ -1798,28 +1824,26 @@ export const adminhome_reports = async (req, res) => {
   }
 };
 
+
+
+
+
 export const consolidated_reports = async (req, res) => {
   const { BranchID } = req.query;
-
+  const timezone = 'Asia/Kolkata';
   try {
+    const day = new Date()
     // Calculate "today" start and end
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
+    const todayStart = moment(day).tz(timezone).startOf('day').toDate();
 
-    const todayEnd = new Date();
-    todayEnd.setHours(23, 59, 59, 999);
-
-    // Calculate "this month" start and end
-    const thisMonthStart = new Date();
-    thisMonthStart.setDate(1); // First day of the current month
-    thisMonthStart.setHours(0, 0, 0, 1);
-
-    const thisMonthEnd = new Date();
-    thisMonthEnd.setMonth(thisMonthEnd.getMonth() + 1);
-    thisMonthEnd.setDate(0); // Last day of the current month
-    thisMonthEnd.setHours(23, 59, 59, 999);
-
-    const now = new Date();
+    const todayEnd = moment(todayStart).tz(timezone).endOf('day').toDate()
+    
+    const currentMoment = moment.tz(timezone);
+    // Calculate "this month" start
+    const thisMonthStart = currentMoment.clone().startOf('month').toDate();
+    // Calculate "this month" end
+    const thisMonthEnd = currentMoment.clone().endOf('month').toDate();
+  
 
     const extPipline = [
       {
@@ -1925,7 +1949,7 @@ export const consolidated_reports = async (req, res) => {
     if (isValidObjectId(BranchID)) {
       matchAsOfLastMonth["BranchID"] = new mongoose.Types.ObjectId(BranchID);
     }
-
+0
     let matchtoday = {
       createdAt: { $gte: todayStart, $lte: todayEnd },
     };
@@ -2007,8 +2031,7 @@ export const consolidated_reports = async (req, res) => {
       todayEndDate: await convertToIST(todayEnd),
       lastMonthStart: await convertToIST(thisMonthStart),
       lastMonthEnd: await convertToIST(thisMonthEnd),
-    };
-
+    };  
     res.status(200).json({
       today: data[0].today,
       asOfLastMonth: data[0].asOfLastMonth,
