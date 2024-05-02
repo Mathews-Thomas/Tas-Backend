@@ -36,7 +36,6 @@ const convertToIST = async (Date) => {
 };
 
 export const employeeRegister = async (req, res) => {
-  
   const {
     firstName,
     lastName,
@@ -274,34 +273,38 @@ export const addMainDepartment = async (req, res) => {
         .json({ message: "New Main Department created successfully", data })
     )
     .catch((err) => res.status(200).json({ message: "error", err }));
-}; 
+};
 //=========================================================================================
-export const viewMainDepartment  = async (req,res)=>{
+export const viewMainDepartment = async (req, res) => {
   try {
-    const { id } = req.params; 
+    const { id } = req.params;
     const mainDepartment = await MainDepartment.findById(id);
-    
+
     if (!mainDepartment) {
-      return res.status(404).send('Main Department not found');
+      return res.status(404).send("Main Department not found");
     }
-    
+
     // Fetch each department individually
-    const departmentIds = mainDepartment.departments.map(id => new mongoose.Types.ObjectId(id));
+    const departmentIds = mainDepartment.departments.map(
+      (id) => new mongoose.Types.ObjectId(id)
+    );
     const departments = await Department.find({
-      '_id': { $in: departmentIds }
-    }).populate('BranchID')
+      _id: { $in: departmentIds },
+    }).populate("BranchID");
 
     // Combine the results into one object
     const result = {
       ...mainDepartment.toObject(), // Convert document to plain object
-      departments: departments
+      departments: departments,
     };
 
     res.status(200).json(result);
   } catch (error) {
-    res.status(500).json({ message: 'Error fetching main department data', error });
-  } 
-}
+    res
+      .status(500)
+      .json({ message: "Error fetching main department data", error });
+  }
+};
 //=========================================================================================
 export const edit_MainDepartment = async (req, res) => {
   const { _id, Name, BranchID } = req.body;
@@ -550,7 +553,8 @@ export const adddoctor = async (req, res) => {
   };
 
   const DoctorExists = await Doctor.findOne({
-    name: new RegExp("^" + name.trim() + "$", "i"),BranchID
+    name: new RegExp("^" + name.trim() + "$", "i"),
+    BranchID,
   });
   if (DoctorExists)
     return res.status(400).json({ error: "Doctor already exists" });
@@ -593,8 +597,8 @@ export const Get_add_doctor = async (req, res) => {
 };
 //==============================================================================================
 export const edit_Add_Ons = async (req, res) => {
-  const BranchID = req.query.BranchID || " "
-  let branchId = { }
+  const BranchID = req.query.BranchID || " ";
+  let branchId = {};
   if (isValidObjectId(BranchID)) {
     branchId.BranchID = new mongoose.Types.ObjectId(BranchID);
   }
@@ -610,7 +614,11 @@ export const edit_Add_Ons = async (req, res) => {
     isApproved: true,
   }).populate("BranchID");
   const Branches = await Branch.find({ status: true, isApproved: true });
-  const Procedures = await Procedure.find({ status: true, isApproved: true, ...branchId})
+  const Procedures = await Procedure.find({
+    status: true,
+    isApproved: true,
+    ...branchId,
+  })
     .populate("BranchID")
     .sort({ BranchID: 1 });
   const Roles = await Role.find({ status: true });
@@ -648,7 +656,7 @@ export const get_addOns = async (req, res) => {
   const MainDepartments = await MainDepartment.find({
     status: true,
     isApproved: true,
-  }).populate("BranchID")
+  }).populate("BranchID");
 
   if (!Branches)
     return res
@@ -682,7 +690,7 @@ export const list_addOns = async (req, res) => {
     Alert.find().sort({ createdAt: -1 }),
     MainDepartment.find(Role === "user" ? { BranchID } : {}).sort({
       createdAt: -1,
-    })
+    }),
   ]);
 
   const [
@@ -757,7 +765,7 @@ export const list_doctors = async (req, res) => {
   const page = parseInt(req.query.page, 10) || 1;
   const limit = parseInt(req.query.limit, 10) || 10;
   const skip = (page - 1) * limit;
-  const BranchID = req.query.BranchID
+  const BranchID = req.query.BranchID;
 
   const searchQuery = req.query.search
     ? {
@@ -774,8 +782,8 @@ export const list_doctors = async (req, res) => {
     const branchesPromise = Branch.find();
     const departmentsPromise = Department.find();
 
-    if(BranchID){
-      searchQuery.BranchID = BranchID
+    if (BranchID) {
+      searchQuery.BranchID = BranchID;
     }
 
     // Apply pagination only to the Doctor.find() query
@@ -802,7 +810,7 @@ export const list_doctors = async (req, res) => {
     const DepartmentMap = departments.reduce((map, departmnt) => {
       map[departmnt._id] = departmnt.Name;
       return map;
-    }, {}); 
+    }, {});
 
     const Doctors = doctors.map((dr) => ({
       ...dr.toObject({ virtuals: true }),
@@ -1081,8 +1089,6 @@ export const report_filter = async (req, res) => {
   });
 };
 
-
-
 export const report_filter_options = async (req, res) => {
   const [
     branches,
@@ -1288,10 +1294,9 @@ export const departmntEdit = async (req, res) => {
     }
     res.status(200).json({
       message: collectionName + "updated Succussfully",
-      updatedDocument:resp,
+      updatedDocument: resp,
     });
   });
-
 };
 
 //=========================================================================================
@@ -1380,7 +1385,7 @@ export const EmployeeEdit = async (req, res) => {
     [Gender, "Gender", "gender"],
     [address, "address", "Address"],
   ]);
-  
+
   if (Object.keys(validationErrors).length > 0) {
     return res.status(400).json({ errors: validationErrors });
   }
@@ -1649,19 +1654,18 @@ export const get_task = async (req, res) => {
   res.json({ tasks: employeeWithTasks.tasks });
 };
 
-
-
-
 //=====================================================================
 export const adminhome_reports = async (req, res) => {
-  const { BranchID } = req.query; 
-  
-  try {
-    const day = new Date()
- 
+  const { BranchID } = req.query;
 
-    const startOfDay = moment(day).tz("Asia/Kolkata").startOf('day').toDate();
-    const endOfDay = moment(startOfDay).tz("Asia/Kolkata").endOf('day').toDate();
+  try {
+    const day = new Date();
+
+    const startOfDay = moment(day).tz("Asia/Kolkata").startOf("day").toDate();
+    const endOfDay = moment(startOfDay)
+      .tz("Asia/Kolkata")
+      .endOf("day")
+      .toDate();
 
     const invoiceAggregationPipeline = [
       {
@@ -1682,15 +1686,14 @@ export const adminhome_reports = async (req, res) => {
       },
     ];
 
-
     if (isValidObjectId(BranchID)) {
       invoiceAggregationPipeline.unshift({
         $match: {
-          BranchID: new mongoose.Types.ObjectId(BranchID)
-        }
+          BranchID: new mongoose.Types.ObjectId(BranchID),
+        },
       });
     }
-    
+
     const invoiceResult = await PatientInvoice.aggregate(
       invoiceAggregationPipeline
     );
@@ -1824,26 +1827,21 @@ export const adminhome_reports = async (req, res) => {
   }
 };
 
-
-
-
-
 export const consolidated_reports = async (req, res) => {
-  const { BranchID } = req.query;
-  const timezone = 'Asia/Kolkata';
+  const { BranchID, StartDate, EndDate } = req.query;
+  const timezone = "Asia/Kolkata";
   try {
-    const day = new Date()
-    // Calculate "today" start and end
-    const todayStart = moment(day).tz(timezone).startOf('day').toDate();
+    const day = new Date();
+    const todayStart = moment(day).tz(timezone).startOf("day").toDate();
+    const todayEnd = moment(todayStart).tz(timezone).endOf("day").toDate();
 
-    const todayEnd = moment(todayStart).tz(timezone).endOf('day').toDate()
-    
-    const currentMoment = moment.tz(timezone);
-    // Calculate "this month" start
-    const thisMonthStart = currentMoment.clone().startOf('month').toDate();
-    // Calculate "this month" end
-    const thisMonthEnd = currentMoment.clone().endOf('month').toDate();
-  
+    const currentMoment = moment.tz(timezone); // Calculate "this month" start
+    const thisMonthStart = StartDate
+      ? moment(StartDate).startOf("day").toDate()
+      : currentMoment.clone().startOf("month").toDate();
+    const thisMonthEnd = EndDate
+      ? moment(EndDate).endOf("day").toDate()
+      : currentMoment.clone().endOf("month").toDate();
 
     const extPipline = [
       {
@@ -1949,8 +1947,7 @@ export const consolidated_reports = async (req, res) => {
     if (isValidObjectId(BranchID)) {
       matchAsOfLastMonth["BranchID"] = new mongoose.Types.ObjectId(BranchID);
     }
-0
-    let matchtoday = {
+        let matchtoday = {
       createdAt: { $gte: todayStart, $lte: todayEnd },
     };
 
@@ -2031,7 +2028,7 @@ export const consolidated_reports = async (req, res) => {
       todayEndDate: await convertToIST(todayEnd),
       lastMonthStart: await convertToIST(thisMonthStart),
       lastMonthEnd: await convertToIST(thisMonthEnd),
-    };  
+    };
     res.status(200).json({
       today: data[0].today,
       asOfLastMonth: data[0].asOfLastMonth,
@@ -2047,22 +2044,18 @@ export const consolidated_reports = async (req, res) => {
 
 export const consolidated_progress_reports = async (req, res) => {
   const { BranchID } = req.query;
+  const timezone = "Asia/Kolkata";
+  const day = new Date();
   // Calculate "today" start and end
-  const todayStart = new Date();
-  todayStart.setHours(0, 0, 0, 0);
+  const todayStart = moment(day).tz(timezone).startOf("day").toDate();
 
-  const todayEnd = new Date();
-  todayEnd.setHours(23, 59, 59, 999);
+  const todayEnd = moment(todayStart).tz(timezone).endOf("day").toDate();
 
+  const currentMoment = moment.tz(timezone);
   // Calculate "this month" start and end
-  const thisMonthStart = new Date();
-  thisMonthStart.setDate(1); // First day of the current month
-  thisMonthStart.setHours(0, 0, 0, 1);
+  const thisMonthStart = currentMoment.clone().startOf("month").toDate();
 
-  const thisMonthEnd = new Date();
-  thisMonthEnd.setMonth(thisMonthEnd.getMonth() + 1);
-  thisMonthEnd.setDate(0); // Last day of the current month
-  thisMonthEnd.setHours(23, 59, 59, 999);
+  const thisMonthEnd = currentMoment.clone().endOf("month").toDate();
 
   const NewPatients = async (startDate, endDate, BranchID = null) => {
     let visitorTypeMatch = { createdAt: { $gte: startDate, $lte: endDate } };
@@ -2074,105 +2067,108 @@ export const consolidated_progress_reports = async (req, res) => {
       {
         $match: visitorTypeMatch,
       },
-      
-        {
-          '$lookup': {
-            'from': 'patientinvoices', 
-            'localField': '_id', 
-            'foreignField': 'patientID', 
-            'as': 'invoices'
-          }
-        }, {
-          '$unwind': '$invoices'
-        }, {
-          '$match': {
-            '$expr': {
-              '$and': [
-                {
-                  '$eq': [
-                    {
-                      '$dateToString': {
-                        'format': '%Y-%m-%d', 
-                        'date': '$createdAt'
-                      }
-                    }, {
-                      '$dateToString': {
-                        'format': '%Y-%m-%d', 
-                        'date': '$invoices.createdAt'
-                      }
-                    }
-                  ]
-                }
-              ]
-            }
-          }
-        },
 
-         {
-          '$lookup': {
-            'from': 'maindepartments', 
-            'localField': 'invoices.MainDepartmentID', 
-            'foreignField': '_id', 
-            'as': 'maindepartments'
-          }
-        }, {
-          '$unwind': {
-            'path': '$maindepartments'
-          }
-        }, {
-          '$group': {
-            '_id': {
-              'mainDepartment': '$invoices.MainDepartmentID', 
-              'branch': '$BranchID', 
-              'date': {
-                '$dateToString': {
-                  'format': '%Y-%m-%d', 
-                  'date': '$createdAt'
-                }
-              }
-            }, 
-            'name': {
-              '$addToSet': '$Name'
-            }, 
-            'department': {
-              '$first': '$maindepartments.Name'
-            }, 
-            'count': {
-              '$sum': 1
-            }
-          }
-        }, {
-          '$project': {
-            '_id': 0, 
-            'date': '$_id.date', 
-            'mainDepartment': '$_id.mainDepartment', 
-            'branch': '$_id.branch', 
-            'count': '$count', 
-            'name': '$name', 
-            'department': '$department'
-          }
-        }, {
-          '$group': {
-            '_id': {
-              'date': '$date'
-            }, 
-            'count': {
-              '$sum': 1
-            }, 
-            'department': {
-              '$first': '$department'
-            }
-          }
-        }
-      
+      {
+        $lookup: {
+          from: "patientinvoices",
+          localField: "_id",
+          foreignField: "patientID",
+          as: "invoices",
+        },
+      },
+      {
+        $unwind: "$invoices",
+      },
+      {
+        $match: {
+          $expr: {
+            $and: [
+              {
+                $eq: [
+                  {
+                    $dateToString: {
+                      format: "%Y-%m-%d",
+                      date: "$createdAt",
+                    },
+                  },
+                  {
+                    $dateToString: {
+                      format: "%Y-%m-%d",
+                      date: "$invoices.createdAt",
+                    },
+                  },
+                ],
+              },
+            ],
+          },
+        },
+      },
+
+      {
+        $lookup: {
+          from: "maindepartments",
+          localField: "invoices.MainDepartmentID",
+          foreignField: "_id",
+          as: "maindepartments",
+        },
+      },
+      {
+        $unwind: {
+          path: "$maindepartments",
+        },
+      },
+      {
+        $group: {
+          _id: {
+            mainDepartment: "$invoices.MainDepartmentID",
+            branch: "$BranchID",
+            date: {
+              $dateToString: {
+                format: "%Y-%m-%d",
+                date: "$createdAt",
+              },
+            },
+          },
+          name: {
+            $addToSet: "$Name",
+          },
+          department: {
+            $first: "$maindepartments.Name",
+          },
+          count: {
+            $sum: 1,
+          },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          date: "$_id.date",
+          mainDepartment: "$_id.mainDepartment",
+          branch: "$_id.branch",
+          count: "$count",
+          name: "$name",
+          department: "$department",
+        },
+      },
+      {
+        $group: {
+          _id: {
+            date: "$date",
+          },
+          count: {
+            $sum: 1,
+          },
+          department: {
+            $first: "$department",
+          },
+        },
+      },
     ]);
   };
 
   const todayResults = await NewPatients(todayStart, todayEnd);
   const thisMonthResults = await NewPatients(thisMonthStart, thisMonthEnd);
-
-
-   
 
   const VisitedUniquePatients = async (startOfMonth, endOfMonth) => {
     const VsitorTypeMatch = {
@@ -2263,6 +2259,6 @@ export const consolidated_progress_reports = async (req, res) => {
     MainDepartments,
     vistorResults,
     results,
-    date
+    date,
   });
 };
