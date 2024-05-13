@@ -1,8 +1,7 @@
 import Branch from "../models/BranchSchema.js";
 import Employee from "../models/EmployeeSchema.js";
 import Role from "../models/RoleSchema.js";
-import { validateInputs } from "../validation/validate.js";
-import { jwtSign } from "./Jwt.js";
+import { validateInputs } from "../validation/validate.js"; 
 import bcrypt from "bcrypt";
 import Department from "../models/DepartmentSchema.js";
 import PaymentMethod from "../models/PaymentMethodSchema.js";
@@ -16,6 +15,7 @@ import moment from "moment-timezone";
 import mongoose, { isValidObjectId } from "mongoose";
 import MainDepartment from "../models/HeadDepartmentSchema.js";
 import Patient from "../models/PatientSchema.js";
+import Appointment from "../models/AppointmentSchema.js";
 
 const models = {
   Branch,
@@ -34,7 +34,18 @@ const models = {
 const convertToIST = async (Date) => {
   return moment(Date).tz("Asia/Kolkata").format("DD/MM/YYYY");
 };
+//=========================================================================================
 
+export const user_details = async (req, res) => {
+  let user = req.verifiedUser;
+  user = JSON.parse(JSON.stringify(user));
+  delete user.securityCredentials;
+
+  res.status(200).json({ user });
+};
+//=========================================================================================
+
+// employee 
 export const employeeRegister = async (req, res) => {
   const {
     firstName,
@@ -101,7 +112,69 @@ export const employeeRegister = async (req, res) => {
     .status(200)
     .json({ message: "Employee Registered Successfully", EmpData });
 };
-//==============================================================================================
+//=========================================================================================
+export const EmployeeEdit = async (req, res) => {
+  const {
+    _id,
+    firstName,
+    lastName,
+    email,
+    phone,
+    designation,
+    age,
+    Gender,
+    address,
+  } = req.body;
+  const collectionName = req.path.split("/")[1];
+  const Model = models[collectionName];
+
+  const validationErrors = await validateInputs([
+    [firstName, "name", "firstName"],
+    [lastName, "name", "lastName"],
+    [email, "email", "email"],
+    [phone, "phone", "phone"],
+    [designation, "name", "designation"],
+    [age, "age", "Age"],
+    [Gender, "Gender", "gender"],
+    [address, "address", "Address"],
+  ]);
+
+  if (Object.keys(validationErrors).length > 0) {
+    return res.status(400).json({ errors: validationErrors });
+  }
+  const editedEmployee = {
+    firstName,
+    lastName,
+    email,
+    phone,
+    designation,
+    age,
+    Gender,
+    createdBy: req?.verifiedUser?.firstName + " " + req?.verifiedUser?.lastName,
+    address,
+  };
+
+  if (!Model) {
+    return res.status(404).send("Collection Not Found");
+  }
+
+  const updatedDocument = await Model.updateOne(
+    { _id },
+    { $set: editedEmployee }
+  ); 
+ 
+
+  if (updatedDocument.matchedCount === 0) {
+    return res.status(404).send("Document Not Found");
+  }
+  res.status(200).json({
+    message: "Employee Updated Successfully",
+    updatedDocument,
+  });
+};
+//=========================================================================================
+
+// Branch 
 export const BranchRegister = async (req, res) => {
   const {
     branchName,
@@ -163,8 +236,78 @@ export const BranchRegister = async (req, res) => {
     .status(200)
     .json({ message: "Branch registered successfully", ...branchData });
 };
-//==============================================================================================
+//========================================================================================= 
+export const BranchEdit = async (req, res) => {
+  const {
+    _id,
+    branchName,
+    address,
+    city,
+    state,
+    country,
+    pincode,
+    phone,
+    email,
+  } = req.body;
+  const collectionName = req.path.split("/")[1];
+  const Model = models[collectionName];
 
+  const validationErrors = await validateInputs([
+    [branchName, "name", "branchName"],
+    [address, "address", "address"],
+    [city, "name", "city"],
+    [state, "name", "state"],
+    [country, "name", "country"],
+    [pincode, "zip", "pincode"],
+    [phone, "phone", "Phone Number"],
+    [email, "email", "email"],
+  ]);
+
+  if (Object.keys(validationErrors).length > 0) {
+    return res.status(400).json({ errors: validationErrors });
+  }
+
+  const editedBranch = {
+    branchName,
+    address,
+    city,
+    state,
+    country,
+    pincode,
+    phone,
+    email,
+  };
+
+  if (!Model) {
+    return res.status(404).send("Collection not found");
+  }
+
+  const updatedDocument = await Model.updateOne(
+    { _id },
+    { $set: editedBranch }
+  );
+
+  if (updatedDocument.matchedCount === 0) {
+    return res.status(404).send("Document not found");
+  }
+  res.status(200).json({
+    message: "Branch updated successfully",
+    updatedDocument,
+  });
+};
+//=========================================================================================
+export const get_Branches = async (req, res) => {
+  const Branches = await Branch.find({ status: true, isApproved: true },{ securityCredentials: 0 });
+
+  if (!Branches)
+    return res
+      .status(400)
+      .json({ message: "Branches Not added", status: false });
+  return res.status(200).json({ status: true, Branches });
+};
+//=========================================================================================
+
+// Role 
 export const AddRole = async (req, res) => {
   const { name, permissions, roleType, createdBy } = req.body;
   const validationErrors = await validateInputs([
@@ -184,8 +327,9 @@ export const AddRole = async (req, res) => {
   const NewRole = Role.create({ name, permissions, roleType, createdBy });
   return res.status(200).json(NewRole);
 };
-//==============================================================================================
+//=========================================================================================
 
+//Department
 export const addDepartment = async (req, res) => {
   const { Name, BranchID, MainDepartmentID } = req.body;
   const { firstName, lastName } = req.verifiedUser;
@@ -235,8 +379,61 @@ export const addDepartment = async (req, res) => {
     })
     .catch((err) => res.status(200).json({ message: "error", err }));
 };
+//=========================================================================================
+export const departmntEdit = async (req, res) => {
+  const { _id, Name, MainDepartmentID } = req.body;
+  const value = req.path.split("/")[1];
+  const collectionName = req.path.split("/")[1];
+  const Model = models[collectionName];
 
-//==============================================================================================
+  if (!Model) {
+    return res.status(404).send("Collection not found");
+  }
+
+  const validationErrors = await validateInputs([
+    [Name, "name", "Department Name"],
+    [MainDepartmentID, "objectID", "MainDepartment"],
+  ]);
+
+  if (Object.keys(validationErrors).length > 0)
+    return res.status(400).json({ errors: validationErrors });
+
+  const OldDeprtment = await Department.findById(_id);
+
+  const editedDepartment = {
+    Name,
+    MainDepartmentID,
+  };
+
+  Model.findByIdAndUpdate(
+    { _id },
+    { $set: editedDepartment },
+    { new: true }
+  ).then(async (resp) => {
+    if (
+      !(
+        OldDeprtment.MainDepartmentID.toString() ===
+        resp.MainDepartmentID.toString()
+      )
+    ) {
+      await MainDepartment.updateOne(
+        { _id: OldDeprtment.MainDepartmentID },
+        { $pull: { departments: resp._id } }
+      );
+      await MainDepartment.updateOne(
+        { _id: resp.MainDepartmentID },
+        { $push: { departments: resp._id } }
+      );
+    }
+    res.status(200).json({
+      message: collectionName + "updated Succussfully",
+      updatedDocument: resp,
+    });
+  });
+};
+//=========================================================================================
+
+//Head Department
 export const addMainDepartment = async (req, res) => {
   const { Name, BranchID } = req.body;
   const { firstName, lastName } = req.verifiedUser;
@@ -358,8 +555,9 @@ export const edit_MainDepartment = async (req, res) => {
     res.status(500).json({ message: "Error updating MainDepartment", error });
   }
 };
+//=========================================================================================
 
-//==============================================================================================
+//Patient Type
 export const addPatientType = async (req, res) => {
   const { type, description } = req.body;
   const { firstName, lastName } = req.verifiedUser;
@@ -393,7 +591,9 @@ export const addPatientType = async (req, res) => {
     )
     .catch((err) => res.status(200).json({ message: "error", err }));
 };
-//==============================================================================================
+//=========================================================================================
+
+// Visitor Type
 export const addVisitorType = async (req, res) => {
   const { type, description } = req.body;
   const { firstName, lastName } = req.verifiedUser;
@@ -427,7 +627,9 @@ export const addVisitorType = async (req, res) => {
     )
     .catch((err) => res.status(200).json({ message: "error", err }));
 };
-//==============================================================================================
+//=========================================================================================
+
+//Payment Method
 export const addPaymentMethod = async (req, res) => {
   const Role = req?.verifiedUser?.role?.roleType;
   const { Method } = req.body;
@@ -456,7 +658,39 @@ export const addPaymentMethod = async (req, res) => {
     )
     .catch((err) => res.status(200).json({ message: "error", err }));
 };
-//==============================================================================================
+//=========================================================================================
+export const PaymentMethodEdit = async (req, res) => {
+  const { _id, Method } = req.body;
+  const collectionName = req.path.split("/")[1];
+  const Model = models[collectionName];
+
+  if (!Model) {
+    return res.status(404).send("Collection not found");
+  }
+  const validationErrors = await validateInputs([[Method, "name", "Method"]]);
+
+  if (Object.keys(validationErrors).length > 0) {
+    return res.status(400).json({ errors: validationErrors });
+  }
+
+  const editedPaymentMethod = { Method };
+
+  const updatedDocument = await Model.updateOne(
+    { _id },
+    { $set: editedPaymentMethod }
+  );
+
+  if (updatedDocument.matchedCount === 0) {
+    return res.status(404).send("Document not found");
+  }
+  res.status(200).json({
+    message: "Payment method updated successfully",
+    updatedDocument,
+  });
+};
+//=========================================================================================
+
+//Procedure 
 export const addprocedure = async (req, res) => {
   const {
     procedure,
@@ -507,7 +741,50 @@ export const addprocedure = async (req, res) => {
     )
     .catch((err) => res.status(200).json({ message: "error", err }));
 };
-//==============================================================================================
+//=========================================================================================
+export const ProcedureEdit = async (req, res) => {
+  const { _id, procedure, description, gstOption, HSNCode, GST } = req.body;
+  const value = req.path.split("/")[1];
+  const collectionName = req.path.split("/")[1];
+  const Model = models[collectionName];
+
+  if (!Model) {
+    return res.status(404).send("Collection not found");
+  }
+
+  const validationErrors = await validateInputs([
+    [procedure, "address", "procedure"],
+    [description, "address", "description"],
+    [gstOption === "non-exception" && [GST, "GST", "GST"]],
+    [HSNCode, "name", "HSNCode"],
+  ]);
+  if (Object.keys(validationErrors).length > 0)
+    return res.status(400).json({ errors: validationErrors });
+
+  const editedProcedure = {
+    procedure,
+    description,
+    gstOption,
+    HSNCode,
+    GST: gstOption === "non-exception" && GST ? GST : 0,
+  };
+
+  const updatedDocument = await Model.updateOne(
+    { _id },
+    { $set: editedProcedure }
+  );
+
+  if (updatedDocument.matchedCount === 0) {
+    return res.status(404).send("Document not found");
+  }
+  res.status(200).json({
+    message: collectionName + "updated Succussfully",
+    updatedDocument,
+  });
+};
+//=========================================================================================
+
+// Doctor
 export const adddoctor = async (req, res) => {
   const {
     name,
@@ -564,7 +841,7 @@ export const adddoctor = async (req, res) => {
     )
     .catch((err) => res.status(200).json({ message: "error", err }));
 };
-//==============================================================================================
+//=========================================================================================
 export const Get_add_doctor = async (req, res) => {
   const Departments = await Department.find({
     status: true,
@@ -572,7 +849,7 @@ export const Get_add_doctor = async (req, res) => {
   })
     .populate("BranchID")
     .sort({ BranchID: 1 });
-  const Branches = await Branch.find({ status: true, isApproved: true });
+  const Branches = await Branch.find({ status: true, isApproved: true },{ securityCredentials: 0 });
   const Procedures = await Procedure.find({ status: true, isApproved: true })
     .populate("BranchID")
     .sort({ BranchID: 1 });
@@ -595,7 +872,148 @@ export const Get_add_doctor = async (req, res) => {
     .status(200)
     .json({ status: true, Branches, Departments, Procedures, Roles });
 };
-//==============================================================================================
+//=========================================================================================
+export const list_doctors = async (req, res) => {
+  const page = parseInt(req.query.page, 10) || 1;
+  const limit = parseInt(req.query.limit, 10) || 10;
+  const skip = (page - 1) * limit;
+  const BranchID = req.query.BranchID;
+
+  const searchQuery = req.query.search
+    ? {
+        // Assuming you want to search by doctor's name and specialization, adjust as needed
+        $or: [
+          { name: new RegExp(req.query.search, "i") }, // 'i' for case-insensitive
+          { specialization: new RegExp(req.query.search, "i") },
+        ],
+      }
+    : {};
+
+  try {
+    // Fetch branches and departments without pagination
+    const branchesPromise = Branch.find();
+    const departmentsPromise = Department.find();
+
+    if (BranchID) {
+      searchQuery.BranchID = BranchID;
+    }
+
+    // Apply pagination only to the Doctor.find() query
+    const doctorsPromise = Doctor.find(searchQuery)
+      .populate({ path: "procedureIds", select: "procedure _id" })
+      .skip(skip)
+      .limit(limit);
+
+    // Fetch the total count of doctors for pagination info
+    const countPromise = Doctor.countDocuments(searchQuery);
+
+    const [Branches, departments, doctors, totalDoctors] = await Promise.all([
+      branchesPromise,
+      departmentsPromise,
+      doctorsPromise,
+      countPromise,
+    ]);
+
+    const branchMap = Branches.reduce((map, branch) => {
+      map[branch._id] = branch.branchName;
+      return map;
+    }, {});
+
+    const DepartmentMap = departments.reduce((map, departmnt) => {
+      map[departmnt._id] = departmnt.Name;
+      return map;
+    }, {});
+
+    const Doctors = doctors.map((dr) => ({
+      ...dr.toObject({ virtuals: true }),
+      BranchName: branchMap[dr.BranchID],
+      DepartmentName: DepartmentMap[dr.DepartmentID],
+    }));
+
+    return res.status(200).json({
+      status: true,
+      currentPage: page,
+      totalPages: Math.ceil(totalDoctors / limit),
+      totalDoctors,
+      limit,
+      Doctors,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      status: false,
+      message: "An error occurred while fetching the doctors list.",
+      error: error.message,
+    });
+  }
+};
+//=========================================================================================
+export const editDoctor = async (req, res) => {
+  const {
+    _id,
+    name,
+    age,
+    Gender,
+    specialization,
+    phone,
+    email,
+    BranchID,
+    DepartmentID,
+    address,
+    procedureIds,
+  } = req.body;
+
+  const { firstName, lastName } = req.verifiedUser;
+  const Role = req?.verifiedUser?.role?.roleType;
+
+  const validationErrors = await validateInputs([
+    [name, "name", "Name"],
+    [age, "age", "Age"],
+    [Gender, "gender", "Gender"],
+    [specialization, "address", "Specialization"],
+    [phone, "phone", "Phone"],
+    [email, "email", "Email"],
+    [address, "address", "Address"],
+    [DepartmentID, "objectID", "DepartmentID"],
+    [BranchID, "objectID", "BranchID"],
+  ]);
+
+  if (Object.keys(validationErrors).length > 0)
+    return res.status(400).json({ errors: validationErrors });
+
+  const updateDoctor = {
+    name,
+    age,
+    Gender,
+    specialization,
+    DepartmentID,
+    BranchID,
+    procedureIds: [...procedureIds],
+    phone,
+    email,
+    address,
+  };
+
+  try {
+    const updatedDoctor = await Doctor.findByIdAndUpdate(
+      _id,
+      updateDoctor,
+      { new: true } // Option to return the document after update
+    );
+
+    if (!updatedDoctor) {
+      return res.status(404).json({ message: "Doctor not found" });
+    }
+
+    res
+      .status(200)
+      .json({ message: "Doctor updated successfully", updatedDoctor });
+  } catch (error) {
+    res.status(500).json({ message: "Error updating doctor", error });
+  }
+};
+//=========================================================================================
+
+//Add Ons
 export const edit_Add_Ons = async (req, res) => {
   const BranchID = req.query.BranchID || " ";
   let branchId = {};
@@ -613,7 +1031,7 @@ export const edit_Add_Ons = async (req, res) => {
     status: true,
     isApproved: true,
   }).populate("BranchID");
-  const Branches = await Branch.find({ status: true, isApproved: true });
+  const Branches = await Branch.find({ status: true, isApproved: true },{ securityCredentials: 0 });
   const Procedures = await Procedure.find({
     status: true,
     isApproved: true,
@@ -645,13 +1063,13 @@ export const edit_Add_Ons = async (req, res) => {
     MainDepartments,
   });
 };
-//==============================================================================================
+//=========================================================================================
 export const get_addOns = async (req, res) => {
   const Departments = await Department.find({
     status: true,
     isApproved: true,
   }).populate("BranchID");
-  const Branches = await Branch.find({ status: true, isApproved: true });
+  const Branches = await Branch.find({ status: true, isApproved: true },{ securityCredentials: 0 });
   const roleType = await Role.find({ status: true });
   const MainDepartments = await MainDepartment.find({
     status: true,
@@ -673,13 +1091,13 @@ export const get_addOns = async (req, res) => {
     .status(200)
     .json({ status: true, Branches, Departments, roleType, MainDepartments });
 };
-//==============================================================================================
+//=========================================================================================
 export const list_addOns = async (req, res) => {
   const { BranchID } = req.query;
   const Role = req?.verifiedUser?.role?.roleType;
   const results = await Promise.all([
-    Branch.find().sort({ createdAt: -1 }),
-    Employee.find().sort({ createdAt: -1 }),
+    Branch.find({},{ securityCredentials: 0 }).sort({ createdAt: -1 }),
+    Employee.find({},{ securityCredentials: 0 }).sort({ createdAt: -1 }),
     PaymentMethod.find().sort({ createdAt: -1 }),
     Procedure.find(Role === "user" ? { BranchID } : {}).sort({ createdAt: -1 }),
     Department.find(Role === "user" ? { BranchID } : {}).sort({
@@ -760,82 +1178,10 @@ export const list_addOns = async (req, res) => {
     "Main Department": Main_Department,
   });
 };
-//==============================================================================================
-export const list_doctors = async (req, res) => {
-  const page = parseInt(req.query.page, 10) || 1;
-  const limit = parseInt(req.query.limit, 10) || 10;
-  const skip = (page - 1) * limit;
-  const BranchID = req.query.BranchID;
+//=========================================================================================
 
-  const searchQuery = req.query.search
-    ? {
-        // Assuming you want to search by doctor's name and specialization, adjust as needed
-        $or: [
-          { name: new RegExp(req.query.search, "i") }, // 'i' for case-insensitive
-          { specialization: new RegExp(req.query.search, "i") },
-        ],
-      }
-    : {};
 
-  try {
-    // Fetch branches and departments without pagination
-    const branchesPromise = Branch.find();
-    const departmentsPromise = Department.find();
-
-    if (BranchID) {
-      searchQuery.BranchID = BranchID;
-    }
-
-    // Apply pagination only to the Doctor.find() query
-    const doctorsPromise = Doctor.find(searchQuery)
-      .populate({ path: "procedureIds", select: "procedure _id" })
-      .skip(skip)
-      .limit(limit);
-
-    // Fetch the total count of doctors for pagination info
-    const countPromise = Doctor.countDocuments(searchQuery);
-
-    const [Branches, departments, doctors, totalDoctors] = await Promise.all([
-      branchesPromise,
-      departmentsPromise,
-      doctorsPromise,
-      countPromise,
-    ]);
-
-    const branchMap = Branches.reduce((map, branch) => {
-      map[branch._id] = branch.branchName;
-      return map;
-    }, {});
-
-    const DepartmentMap = departments.reduce((map, departmnt) => {
-      map[departmnt._id] = departmnt.Name;
-      return map;
-    }, {});
-
-    const Doctors = doctors.map((dr) => ({
-      ...dr.toObject({ virtuals: true }),
-      BranchName: branchMap[dr.BranchID],
-      DepartmentName: DepartmentMap[dr.DepartmentID],
-    }));
-
-    return res.status(200).json({
-      status: true,
-      currentPage: page,
-      totalPages: Math.ceil(totalDoctors / limit),
-      totalDoctors,
-      limit,
-      Doctors,
-    });
-  } catch (error) {
-    return res.status(500).json({
-      status: false,
-      message: "An error occurred while fetching the doctors list.",
-      error: error.message,
-    });
-  }
-};
-
-//==============================================================================================
+// Tools 
 export const updateStatus = async (req, res) => {
   const { id, status } = req.body;
   const value = req.path.split("/")[1];
@@ -859,8 +1205,7 @@ export const updateStatus = async (req, res) => {
     updatedDocument,
   });
 };
-
-//==============================================================================================
+//=========================================================================================
 export const approve = async (req, res) => {
   const { id } = req.body;
   const value = req.path.split("/")[1];
@@ -884,7 +1229,43 @@ export const approve = async (req, res) => {
     updatedDocument,
   });
 };
-//==============================================================================================
+//=========================================================================================
+export const Edit = async (req, res) => {
+  const { _id, type, description } = req.body;
+  const value = req.path.split("/")[1];
+  const collectionName = req.path.split("/")[1];
+  const Model = models[collectionName];
+
+  if (!Model) {
+    return res.status(404).send("Collection not found");
+  }
+
+  const validationErrors = await validateInputs([
+    [type, "name", "type"],
+    [description, "address", "description"],
+  ]);
+
+  if (Object.keys(validationErrors).length > 0)
+    return res.status(400).json({ errors: validationErrors });
+
+  const data = {
+    type,
+    description,
+  };
+  const updatedDocument = await Model.updateOne({ _id }, { $set: data });
+
+  if (updatedDocument.matchedCount === 0) {
+    return res.status(404).send("Document not found");
+  }
+  res.status(200).json({
+    message: collectionName + "updated Succussfully",
+    updatedDocument,
+  });
+};
+//=========================================================================================
+
+
+//Alerts
 export const set_alert = async (req, res) => {
   const { firstName, lastName } = req.verifiedUser;
   const Role = req?.verifiedUser?.role?.roleType;
@@ -917,28 +1298,182 @@ export const set_alert = async (req, res) => {
       return res.status(400).json(err);
     });
 };
-//==============================================================================================
-export const user_details = async (req, res) => {
-  let user = req.verifiedUser;
-  user = JSON.parse(JSON.stringify(user));
-  delete user.securityCredentials;
+//=========================================================================================
+export const AlertEdit = async (req, res) => {
+  const { _id, msg, type, startDate, endDate } = req.body;
+  const value = req.path.split("/")[1];
+  const collectionName = req.path.split("/")[1];
+  const Model = models[collectionName];
 
-  res.status(200).json({ user });
+  const validationErrors = await validateInputs([
+    [msg, "address", "Message"],
+    [type, "name", "Type"],
+  ]);
+
+  if (Object.keys(validationErrors).length > 0)
+    return res.status(400).json({ errors: validationErrors });
+
+  const EditedAlert = {
+    msg,
+    type,
+    startDate,
+    endDate,
+  };
+
+  if (!Model) {
+    return res.status(404).send("Collection not found");
+  }
+
+  const updatedDocument = await Model.updateOne({ _id }, { $set: EditedAlert });
+
+  if (updatedDocument.matchedCount === 0) {
+    return res.status(404).send("Document not found");
+  }
+  res.status(200).json({
+    message: collectionName + "updated Succussfully",
+    updatedDocument,
+  });
 };
+//=========================================================================================
 
-//==============================================================================================
-export const get_Branches = async (req, res) => {
-  const Branches = await Branch.find({ status: true, isApproved: true });
 
-  if (!Branches)
-    return res
-      .status(400)
-      .json({ message: "Branches Not added", status: false });
-  return res.status(200).json({ status: true, Branches });
+// Task 
+export const updatetaskStatus = async (req, res) => {
+  try {
+    const employeeId = req?.verifiedUser?.id;
+    const { taskId, status } = req.body;
+
+    const employee = await Employee.findById(employeeId);
+
+    if (!employee) {
+      return res.status(404).json({ error: "Employee not found" });
+    }
+
+    const task = employee.tasks.id(taskId);
+
+    if (!task) {
+      return res.status(404).json({ error: "Task not found" });
+    }
+
+    task.status = status;
+
+    await employee.save();
+
+    res
+      .status(200)
+      .json({ message: "Task status updated successfully", updatedTask: task });
+  } catch (error) {
+    console.error("Failed to update task status:", error);
+    res.status(500).json({ error: "Failed to update task status" });
+  }
 };
+//=========================================================================================
+export const edit_task = async (req, res) => {
+  try {
+    const employeeId = req?.verifiedUser?.id;
 
-//===============================================================================================
-export const report_filter = async (req, res) => {
+    const { taskId, description } = req.body;
+
+    const employee = await Employee.findById(employeeId,{ securityCredentials: 0 });
+
+    if (!employee) {
+      return res.status(404).json({ error: "Employee not found" });
+    }
+
+    const taskIndex = employee.tasks.findIndex((task) => {
+      return task.id === taskId;
+    });
+
+    if (taskIndex === -1) {
+      return res.status(404).json({ error: "Task not found" });
+    }
+
+    employee.tasks[taskIndex].description = description;
+    await employee.save();
+
+    res.status(200).json({ message: "Task updated successfully", employee });
+  } catch (error) {
+    console.error("Failed to update task:", error);
+    res.status(500).json({ error: "Failed to update task" });
+  }
+};
+//=========================================================================================
+export const set_task = async (req, res) => {
+  try {
+    const { task } = req.body;
+    const employeeId = req?.verifiedUser?.id;
+
+    if (!employeeId || !task) {
+      return res
+        .status(400)
+        .send("Missing task details or unable to verify employee ID");
+    }
+
+    const updatedEmployee = await Employee.findByIdAndUpdate(
+      employeeId,
+      { $push: { tasks: { $each: [task], $position: 0 } } } ,
+      { new: true, safe: true, upsert: false  }
+    );
+
+    if (!updatedEmployee) {
+      return res.status(404).send("Employee not found");
+    }
+const {securityCredentials:_,...emp} = updatedEmployee.toObject()
+    res.json({
+      success: true,
+      message: "Task added successfully",
+      emp,
+    });
+  } catch (error) {
+    console.error("Error adding task to employee:", error);
+    res.status(500).send("Internal server error");
+  }
+};
+//=========================================================================================
+export const delete_task = async (req, res) => {
+  const employeeId = req?.verifiedUser?.id;
+  const { taskId } = req.body;
+
+  try {
+    const employee = await Employee.findById(employeeId);
+
+    if (!employee) {
+      return res.status(404).json({ error: "Employee not found" });
+    }
+
+    employee.tasks.pull(taskId);
+
+    await employee.save();
+
+    res.json({ message: "Task deleted successfully" });
+  } catch (error) {
+    console.error("Failed to delete task:", error);
+    res.status(500).json({ error: "Failed to delete task" });
+  }
+};
+//=========================================================================================
+export const get_task = async (req, res) => {
+  const employeeId = req?.verifiedUser?.id;
+
+  if (!employeeId) {
+    return res.status(401).send("Unauthorized: No employee ID provided");
+  }
+
+  const employeeWithTasks = await Employee.findById(employeeId)
+    .select("tasks")
+    .exec();
+
+  if (!employeeWithTasks) {
+    return res.status(404).send("Employee not found");
+  }
+
+  res.json({ tasks: employeeWithTasks.tasks });
+};
+//=========================================================================================
+
+
+// Reports 
+export const report_filter = async (req, res) => { 
   const {
     BranchID,
     doctorID,
@@ -1088,8 +1623,18 @@ export const report_filter = async (req, res) => {
     globalSums,
   });
 };
-
+//=========================================================================================
 export const report_filter_options = async (req, res) => {
+  const {BranchID} = req.query 
+
+  let branchFilter = { status: true, isApproved: true };
+  let customFilter = {}
+ 
+  if (BranchID && BranchID !== "undefined") {
+    branchFilter._id = BranchID;
+    customFilter.BranchID = BranchID
+  }
+  
   const [
     branches,
     doctors,
@@ -1101,12 +1646,12 @@ export const report_filter_options = async (req, res) => {
     patientTypes,
     gst,
   ] = await Promise.all([
-    Branch.find({ status: true, isApproved: true }, { securityCredentials: 0 }),
-    Doctor.find({ status: true, isApproved: true }),
-    Department.find({ status: true, isApproved: true })
+    Branch.find(branchFilter, { securityCredentials: 0 }),
+    Doctor.find({ ...customFilter, status: true, isApproved: true }),
+    Department.find({  ...customFilter, status: true, isApproved: true })
       .populate("BranchID")
       .sort("BranchID"),
-    Procedure.find({ status: true, isApproved: true })
+    Procedure.find({  ...customFilter,status: true, isApproved: true })
       .populate("DepartmentID")
       .populate("BranchID")
       .sort("DepartmentID"),
@@ -1132,529 +1677,7 @@ export const report_filter_options = async (req, res) => {
     gst,
   });
 };
-//==============================================================================================
-
-export const Edit = async (req, res) => {
-  const { _id, type, description } = req.body;
-  const value = req.path.split("/")[1];
-  const collectionName = req.path.split("/")[1];
-  const Model = models[collectionName];
-
-  if (!Model) {
-    return res.status(404).send("Collection not found");
-  }
-
-  const validationErrors = await validateInputs([
-    [type, "name", "type"],
-    [description, "address", "description"],
-  ]);
-
-  if (Object.keys(validationErrors).length > 0)
-    return res.status(400).json({ errors: validationErrors });
-
-  const data = {
-    type,
-    description,
-  };
-  const updatedDocument = await Model.updateOne({ _id }, { $set: data });
-
-  if (updatedDocument.matchedCount === 0) {
-    return res.status(404).send("Document not found");
-  }
-  res.status(200).json({
-    message: collectionName + "updated Succussfully",
-    updatedDocument,
-  });
-};
-//==============================================================================================
-
-export const ProcedureEdit = async (req, res) => {
-  const { _id, procedure, description, gstOption, HSNCode, GST } = req.body;
-  const value = req.path.split("/")[1];
-  const collectionName = req.path.split("/")[1];
-  const Model = models[collectionName];
-
-  if (!Model) {
-    return res.status(404).send("Collection not found");
-  }
-
-  const validationErrors = await validateInputs([
-    [procedure, "address", "procedure"],
-    [description, "address", "description"],
-    [gstOption === "non-exception" && [GST, "GST", "GST"]],
-    [HSNCode, "name", "HSNCode"],
-  ]);
-  if (Object.keys(validationErrors).length > 0)
-    return res.status(400).json({ errors: validationErrors });
-
-  const editedProcedure = {
-    procedure,
-    description,
-    gstOption,
-    HSNCode,
-    GST: gstOption === "non-exception" && GST ? GST : 0,
-  };
-
-  const updatedDocument = await Model.updateOne(
-    { _id },
-    { $set: editedProcedure }
-  );
-
-  if (updatedDocument.matchedCount === 0) {
-    return res.status(404).send("Document not found");
-  }
-  res.status(200).json({
-    message: collectionName + "updated Succussfully",
-    updatedDocument,
-  });
-};
-//==============================================================================================
-
-export const AlertEdit = async (req, res) => {
-  const { _id, msg, type, startDate, endDate } = req.body;
-  const value = req.path.split("/")[1];
-  const collectionName = req.path.split("/")[1];
-  const Model = models[collectionName];
-
-  const validationErrors = await validateInputs([
-    [msg, "address", "Message"],
-    [type, "name", "Type"],
-  ]);
-
-  if (Object.keys(validationErrors).length > 0)
-    return res.status(400).json({ errors: validationErrors });
-
-  const EditedAlert = {
-    msg,
-    type,
-    startDate,
-    endDate,
-  };
-
-  if (!Model) {
-    return res.status(404).send("Collection not found");
-  }
-
-  const updatedDocument = await Model.updateOne({ _id }, { $set: EditedAlert });
-
-  if (updatedDocument.matchedCount === 0) {
-    return res.status(404).send("Document not found");
-  }
-  res.status(200).json({
-    message: collectionName + "updated Succussfully",
-    updatedDocument,
-  });
-};
-//==============================================================================================
-
-export const departmntEdit = async (req, res) => {
-  const { _id, Name, MainDepartmentID } = req.body;
-  const value = req.path.split("/")[1];
-  const collectionName = req.path.split("/")[1];
-  const Model = models[collectionName];
-
-  if (!Model) {
-    return res.status(404).send("Collection not found");
-  }
-
-  const validationErrors = await validateInputs([
-    [Name, "name", "Department Name"],
-    [MainDepartmentID, "objectID", "MainDepartment"],
-  ]);
-
-  if (Object.keys(validationErrors).length > 0)
-    return res.status(400).json({ errors: validationErrors });
-
-  const OldDeprtment = await Department.findById(_id);
-
-  const editedDepartment = {
-    Name,
-    MainDepartmentID,
-  };
-
-  Model.findByIdAndUpdate(
-    { _id },
-    { $set: editedDepartment },
-    { new: true }
-  ).then(async (resp) => {
-    if (
-      !(
-        OldDeprtment.MainDepartmentID.toString() ===
-        resp.MainDepartmentID.toString()
-      )
-    ) {
-      await MainDepartment.updateOne(
-        { _id: OldDeprtment.MainDepartmentID },
-        { $pull: { departments: resp._id } }
-      );
-      await MainDepartment.updateOne(
-        { _id: resp.MainDepartmentID },
-        { $push: { departments: resp._id } }
-      );
-    }
-    res.status(200).json({
-      message: collectionName + "updated Succussfully",
-      updatedDocument: resp,
-    });
-  });
-};
-
 //=========================================================================================
-export const BranchEdit = async (req, res) => {
-  const {
-    _id,
-    branchName,
-    address,
-    city,
-    state,
-    country,
-    pincode,
-    phone,
-    email,
-  } = req.body;
-  const collectionName = req.path.split("/")[1];
-  const Model = models[collectionName];
-
-  const validationErrors = await validateInputs([
-    [branchName, "name", "branchName"],
-    [address, "address", "address"],
-    [city, "name", "city"],
-    [state, "name", "state"],
-    [country, "name", "country"],
-    [pincode, "zip", "pincode"],
-    [phone, "phone", "Phone Number"],
-    [email, "email", "email"],
-  ]);
-
-  if (Object.keys(validationErrors).length > 0) {
-    return res.status(400).json({ errors: validationErrors });
-  }
-
-  const editedBranch = {
-    branchName,
-    address,
-    city,
-    state,
-    country,
-    pincode,
-    phone,
-    email,
-  };
-
-  if (!Model) {
-    return res.status(404).send("Collection not found");
-  }
-
-  const updatedDocument = await Model.updateOne(
-    { _id },
-    { $set: editedBranch }
-  );
-
-  if (updatedDocument.matchedCount === 0) {
-    return res.status(404).send("Document not found");
-  }
-  res.status(200).json({
-    message: "Branch updated successfully",
-    updatedDocument,
-  });
-};
-
-//=========================================================================================
-export const EmployeeEdit = async (req, res) => {
-  const {
-    _id,
-    firstName,
-    lastName,
-    email,
-    phone,
-    designation,
-    age,
-    Gender,
-    address,
-  } = req.body;
-  const collectionName = req.path.split("/")[1];
-  const Model = models[collectionName];
-
-  const validationErrors = await validateInputs([
-    [firstName, "name", "firstName"],
-    [lastName, "name", "lastName"],
-    [email, "email", "email"],
-    [phone, "phone", "phone"],
-    [designation, "name", "designation"],
-    [age, "age", "Age"],
-    [Gender, "Gender", "gender"],
-    [address, "address", "Address"],
-  ]);
-
-  if (Object.keys(validationErrors).length > 0) {
-    return res.status(400).json({ errors: validationErrors });
-  }
-  const editedEmployee = {
-    firstName,
-    lastName,
-    email,
-    phone,
-    designation,
-    age,
-    Gender,
-    createdBy: req?.verifiedUser?.firstName + " " + req?.verifiedUser?.lastName,
-    address,
-  };
-
-  if (!Model) {
-    return res.status(404).send("Collection Not Found");
-  }
-
-  const updatedDocument = await Model.updateOne(
-    { _id },
-    { $set: editedEmployee }
-  );
-
-  if (updatedDocument.matchedCount === 0) {
-    return res.status(404).send("Document Not Found");
-  }
-  res.status(200).json({
-    message: "Employee Updated Successfully",
-    updatedDocument,
-  });
-};
-
-//=========================================================================================
-export const PaymentMethodEdit = async (req, res) => {
-  const { _id, Method } = req.body;
-  const collectionName = req.path.split("/")[1];
-  const Model = models[collectionName];
-
-  if (!Model) {
-    return res.status(404).send("Collection not found");
-  }
-  const validationErrors = await validateInputs([[Method, "name", "Method"]]);
-
-  if (Object.keys(validationErrors).length > 0) {
-    return res.status(400).json({ errors: validationErrors });
-  }
-
-  const editedPaymentMethod = { Method };
-
-  const updatedDocument = await Model.updateOne(
-    { _id },
-    { $set: editedPaymentMethod }
-  );
-
-  if (updatedDocument.matchedCount === 0) {
-    return res.status(404).send("Document not found");
-  }
-  res.status(200).json({
-    message: "Payment method updated successfully",
-    updatedDocument,
-  });
-};
-
-//=========================================================================================
-export const editDoctor = async (req, res) => {
-  const {
-    _id,
-    name,
-    age,
-    Gender,
-    specialization,
-    phone,
-    email,
-    BranchID,
-    DepartmentID,
-    address,
-    procedureIds,
-  } = req.body;
-
-  const { firstName, lastName } = req.verifiedUser;
-  const Role = req?.verifiedUser?.role?.roleType;
-
-  const validationErrors = await validateInputs([
-    [name, "name", "Name"],
-    [age, "age", "Age"],
-    [Gender, "gender", "Gender"],
-    [specialization, "address", "Specialization"],
-    [phone, "phone", "Phone"],
-    [email, "email", "Email"],
-    [address, "address", "Address"],
-    [DepartmentID, "objectID", "DepartmentID"],
-    [BranchID, "objectID", "BranchID"],
-  ]);
-
-  if (Object.keys(validationErrors).length > 0)
-    return res.status(400).json({ errors: validationErrors });
-
-  const updateDoctor = {
-    name,
-    age,
-    Gender,
-    specialization,
-    DepartmentID,
-    BranchID,
-    procedureIds: [...procedureIds],
-    phone,
-    email,
-    address,
-  };
-
-  try {
-    const updatedDoctor = await Doctor.findByIdAndUpdate(
-      _id,
-      updateDoctor,
-      { new: true } // Option to return the document after update
-    );
-
-    if (!updatedDoctor) {
-      return res.status(404).json({ message: "Doctor not found" });
-    }
-
-    res
-      .status(200)
-      .json({ message: "Doctor updated successfully", updatedDoctor });
-  } catch (error) {
-    res.status(500).json({ message: "Error updating doctor", error });
-  }
-};
-
-//=========================================================================================
-export const updatetaskStatus = async (req, res) => {
-  try {
-    const employeeId = req?.verifiedUser?.id;
-    const { taskId, status } = req.body;
-
-    const employee = await Employee.findById(employeeId);
-
-    if (!employee) {
-      return res.status(404).json({ error: "Employee not found" });
-    }
-
-    const task = employee.tasks.id(taskId);
-
-    if (!task) {
-      return res.status(404).json({ error: "Task not found" });
-    }
-
-    task.status = status;
-
-    await employee.save();
-
-    res
-      .status(200)
-      .json({ message: "Task status updated successfully", updatedTask: task });
-  } catch (error) {
-    console.error("Failed to update task status:", error);
-    res.status(500).json({ error: "Failed to update task status" });
-  }
-};
-
-//=========================================================================================
-export const edit_task = async (req, res) => {
-  try {
-    const employeeId = req?.verifiedUser?.id;
-
-    const { taskId, description } = req.body;
-
-    const employee = await Employee.findById(employeeId);
-
-    if (!employee) {
-      return res.status(404).json({ error: "Employee not found" });
-    }
-
-    const taskIndex = employee.tasks.findIndex((task) => {
-      return task.id === taskId;
-    });
-
-    if (taskIndex === -1) {
-      return res.status(404).json({ error: "Task not found" });
-    }
-
-    employee.tasks[taskIndex].description = description;
-    await employee.save();
-
-    res.status(200).json({ message: "Task updated successfully", employee });
-  } catch (error) {
-    console.error("Failed to update task:", error);
-    res.status(500).json({ error: "Failed to update task" });
-  }
-};
-
-//=========================================================================================
-export const set_task = async (req, res) => {
-  try {
-    const { task } = req.body;
-    const employeeId = req?.verifiedUser?.id;
-
-    if (!employeeId || !task) {
-      return res
-        .status(400)
-        .send("Missing task details or unable to verify employee ID");
-    }
-
-    const updatedEmployee = await Employee.findByIdAndUpdate(
-      employeeId,
-      { $push: { tasks: { $each: [task], $position: 0 } } },
-      { new: true, safe: true, upsert: false }
-    );
-
-    if (!updatedEmployee) {
-      return res.status(404).send("Employee not found");
-    }
-
-    res.json({
-      success: true,
-      message: "Task added successfully",
-      updatedEmployee,
-    });
-  } catch (error) {
-    console.error("Error adding task to employee:", error);
-    res.status(500).send("Internal server error");
-  }
-};
-
-//=========================================================================================
-export const delete_task = async (req, res) => {
-  const employeeId = req?.verifiedUser?.id;
-  const { taskId } = req.body;
-
-  try {
-    const employee = await Employee.findById(employeeId);
-
-    if (!employee) {
-      return res.status(404).json({ error: "Employee not found" });
-    }
-
-    employee.tasks.pull(taskId);
-
-    await employee.save();
-
-    res.json({ message: "Task deleted successfully" });
-  } catch (error) {
-    console.error("Failed to delete task:", error);
-    res.status(500).json({ error: "Failed to delete task" });
-  }
-};
-
-//=========================================================================================
-
-export const get_task = async (req, res) => {
-  const employeeId = req?.verifiedUser?.id;
-
-  if (!employeeId) {
-    return res.status(401).send("Unauthorized: No employee ID provided");
-  }
-
-  const employeeWithTasks = await Employee.findById(employeeId)
-    .select("tasks")
-    .exec();
-
-  if (!employeeWithTasks) {
-    return res.status(404).send("Employee not found");
-  }
-
-  res.json({ tasks: employeeWithTasks.tasks });
-};
-
-//=====================================================================
 export const adminhome_reports = async (req, res) => {
   const { BranchID } = req.query;
 
@@ -1808,7 +1831,7 @@ export const adminhome_reports = async (req, res) => {
       procedureAggregationPipeline
     );
 
-    const employeeResult = await Employee.find();
+    const employeeResult = await Employee.find({},{ securityCredentials: 0 });
 
     res.json({
       todaysInvoice:
@@ -1826,7 +1849,7 @@ export const adminhome_reports = async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 };
-
+//=========================================================================================
 export const consolidated_reports = async (req, res) => {
   const { BranchID, StartDate, EndDate } = req.query;
   const timezone = "Asia/Kolkata";
@@ -2041,7 +2064,7 @@ export const consolidated_reports = async (req, res) => {
     res.status(500).send("Server error");
   }
 };
-
+//=========================================================================================
 export const consolidated_progress_reports = async (req, res) => {
   const { BranchID } = req.query;
   const timezone = "Asia/Kolkata";
@@ -2262,3 +2285,82 @@ export const consolidated_progress_reports = async (req, res) => {
     date,
   });
 };
+//=========================================================================================
+
+// Appointments 
+export const set_appointment = async (req,res)=>{
+  const {branch_id,name,phone,age,place,email,gender,new_patient,patient_id,date_time,doctor_id,procedure,visit_type,note} = req.body 
+
+  const validationErrors = await validateInputs([
+    [name, "name", "name"],
+    [age, "age", "age"], 
+    [place, "name", "name"],
+    [phone, "phone", "phone"],
+    [doctor_id, "objectID", "Doctor ID"],
+    [branch_id, "objectID", "BranchID"],
+    [date_time,"date","date and time"],
+    [visit_type,"visit","Visiting Type"]
+  ]);
+
+  if (Object.keys(validationErrors).length > 0) {
+    return res.status(400).json({ errors: validationErrors });
+  }
+
+  if(new_patient && !patient_id ){
+  const existingPatient = await Patient.findOne({ BranchID:branch_id, Name:name, phone });
+  if (existingPatient)
+    return res.status(400).send({ errors: "Patient already exists." });
+  }
+ 
+  const existingAppointment = await Appointment.findOne({ doctor_id, date_time });
+  if (existingAppointment) {
+    return res.status(400).json({ errors: "Selected time slot is already taken. Please select another slot." });
+  }
+
+  const new_appointment = {   
+    branch_id:branch_id,
+    patient:{
+       name:name,
+       phone:phone,
+       age:age,
+       place:place,
+       email:email,
+       gender:gender
+    },
+    new_patient:new_patient,
+    patient_id:patient_id,
+    date_time:date_time, 
+    doctor_id:doctor_id,
+    procedure_id:procedure,
+    visit_type:visit_type, 
+    note:note,
+    status:'scheduled', 
+    createdBy:req.verifiedUser.firstName +" "+req.verifiedUser.lastName, 
+  }
+ 
+  Appointment.create(new_appointment).then((data) =>
+    res.status(200).json({ message: "New Appointment created successfully",data})
+  ).catch((err) => res.status(200).json({ message: "error", err })); 
+}
+//=========================================================================================
+
+export const cancel_appointment = async (req,res)=>{
+  const {_id} = req.query 
+
+  const validationErrors = await validateInputs([[_id, "objectID", "Appointment ID"]]);
+
+  if (Object.keys(validationErrors).length > 0) {
+    return res.status(400).json({ errors: validationErrors });
+  } 
+ 
+  const not_existingAppointment = await Appointment.findById({_id});
+  if (not_existingAppointment) {
+    return res.status(400).json({ errors: "Appointment Not found" });
+  }
+
+  const updated_appointment = Appointment.updateOne({_id},{$set:{status:"canceled"}})
+ 
+  
+    res.status(200).json({ message: "New Appointment Cancelled successfully"}) 
+}
+//=========================================================================================

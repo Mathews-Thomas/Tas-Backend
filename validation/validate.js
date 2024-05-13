@@ -7,7 +7,7 @@ import {
     validatePrice, 
     validateProductName, 
     validateProductCategory,
-    validatePosision,
+    validatePosition,
     loginId,
     validateZipCode,
     ValidateRoll,
@@ -15,7 +15,9 @@ import {
     validateAge,
     validateGender,
     ValidateBranchID,
-    validateGST
+    validateGST,
+    validate_date_time,
+    validateVisitorType
 } from "./inputvalidation.js"
 
 const validators = {
@@ -29,13 +31,15 @@ const validators = {
     price: validatePrice,
     productName: validateProductName,
     productCategory: validateProductCategory,
-    posision:validatePosision,
+    position:validatePosition,
     loginId:loginId,
     zip:validateZipCode,
     role:ValidateRoll,
     objectID:verifyObjID,
     BranchID:ValidateBranchID,
-    GST:validateGST
+    GST:validateGST,
+    date:validate_date_time,
+    visit:validateVisitorType
 }
 
 export async function validateInputs(inputs) {

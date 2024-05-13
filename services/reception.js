@@ -13,7 +13,8 @@ import PaymentMethod from "../models/PaymentMethodSchema.js";
 import Alert from "../models/AlertSchema.js";
 import mongoose from "mongoose";  
 
-// ============================================================
+
+// Branch
 export const branchLogin = async (req,res)=>{
   const {loginId,password} = req.body
 const validationErrors = validateInputs([
@@ -39,8 +40,27 @@ const token = jwtSign(branchData._id.toString())
      return res.status(200).json({ Branch: branchData,token:token });
 
 }
+//=========================================================================================
+export const get_branch = async (req, res) => {
+  const { BranchID } = req.params;
+  const validationErrors = await validateInputs([
+    [BranchID, "BranchID", "BranchID"],
+  ]);
+  if (Object.keys(validationErrors).length > 0)
+    return res.status(400).json({ errors: validationErrors });
 
-// ================================================
+  const branch = await Branch.findById(
+    { _id: BranchID },
+    { securityCredentials: 0 }
+  );
+  if (!branch) return res.status(404).send("branch not found");
+
+  res.status(200).send(branch);
+};
+//=========================================================================================
+
+
+// Employee
 export const employeeLogin = async (req, res) => {
   const { loginId, password } = req.body;
 
@@ -73,8 +93,10 @@ export const employeeLogin = async (req, res) => {
   const token = jwtSign(employeeData._id.toString());
   return res.status(200).json({ Employee: employeeData, token: token });
 };
+//=========================================================================================
 
-// ================================================
+
+// Patient 
 export const addPatient = async (req, res) => {
   const {
     Name,
@@ -106,6 +128,7 @@ export const addPatient = async (req, res) => {
     return res.status(400).send({ errors: "Patient already exists." });
   const patientCount = await Patient.countDocuments({ BranchID });
   const { branchName } = await Branch.findOne({ _id: BranchID });
+  
   const newPatient = {
     PatientID: `TM${branchName[0]}${
       patientCount + 1 === Number(PatientID) ? PatientID : patientCount + 1
@@ -132,8 +155,7 @@ export const addPatient = async (req, res) => {
     )
     .catch((err) => res.status(200).json({ message: "error", err }));
 };
-
-// ================================================
+//========================================================================================= 
 export const getAddPatient = async (req, res) => {
   const BranchID = req.params.BranchID;
   const VisitorTypes = await VisitorType.find({
@@ -157,8 +179,7 @@ export const getAddPatient = async (req, res) => {
     .status(200)
     .json({ nextPatientID: nextPatientID, VisitorTypes, PatientTypes });
 };
-
-// ================================================
+//=========================================================================================
 export const getPatientList = async (req, res) => {
   const {
     page = 1,
@@ -213,8 +234,56 @@ export const getPatientList = async (req, res) => {
     currentPage: page,
   });
 };
+//=========================================================================================
+export const edit_Patient = async (req, res) => {
+  const {
+    Name,
+    age,
+    Gender,
+    address,
+    phone,
+    email,
+    VisitorTypeID,
+    patientTypeID,
+    PatientID,
+    BranchID,
+  } = req.body;
+  const { firstName, lastName } = req.verifiedUser;
+  const validationErrors = await validateInputs([
+    [Name, "name", "Name"],
+    [age, "age", "age"],
+    [Gender, "gender", "Gender"],
+    [phone, "phone", "phone"],
+    [BranchID, "BranchID", "BranchID"],
+  ]);
 
-// ================================================
+  if (Object.keys(validationErrors).length > 0)
+    return res.status(400).json({ errors: validationErrors });
+
+  const updatedPatient = {
+    PatientID: PatientID,
+    Name,
+    age,
+    Gender,
+    address: address ? address : "",
+    phone,
+    email: email ? email : "",
+    VisitorTypeID,
+    patientTypeID,
+    createdBy: firstName + " " + lastName,
+    BranchID,
+  };
+
+  await Patient.updateOne({ PatientID }, updatedPatient)
+    .then((data) =>
+      res.status(200).json({ message: "Patient updated successfully", data })
+    )
+    .catch((err) => res.status(200).json({ message: "error", err }));
+};
+//=========================================================================================
+
+
+// Invoice
 export const addInvoice = async (req, res) => {
   const {
     invoiceID,
@@ -247,6 +316,7 @@ export const addInvoice = async (req, res) => {
 
   if (Object.keys(validationErrors).length > 0)
     return res.status(400).json({ errors: validationErrors });
+  
 
   const newInvoice = {
     invoiceID: invoiceID,
@@ -315,8 +385,7 @@ export const addInvoice = async (req, res) => {
       res.status(400).json({ error: "Error creating invoice", err });
     });
 };
-
-//========================================================
+//=========================================================================================
 export const getInviuceDropdowns = async (req, res) => {
   const { PatientID, BranchID } = req.query;
   const { firstName, lastName } = req.verifiedUser;
@@ -401,8 +470,7 @@ export const getInviuceDropdowns = async (req, res) => {
     createdBy: firstName + " " + lastName,
   });
 };
-
-//===========================================================
+//=========================================================================================
 export const getPatientInvoiceList = async (req, res) => {
   const {
     page = 1,
@@ -416,14 +484,7 @@ export const getPatientInvoiceList = async (req, res) => {
     endDate,
   } = req.query;
   const { BranchID } = req.params;
-  const companyInfo = {
-    companyName: "TOPMOST KALAMASSERY",
-    companyAddress: `OPPOSITE METRO PILLAR 316, PKA NAGAR,ALFIYA NAGARA, SOUTH KALAMASSRY, ERNAKULAM, KERALA
-  KOCHI 682033 , 
-  Phone:7558011177
-  Email:topmostkalamasserry@gmail.com`,
-  };
-
+  
   // Building a filter object for Mongoose query
   let filter = { status: true };
 
@@ -442,24 +503,32 @@ export const getPatientInvoiceList = async (req, res) => {
     }
   }
   if (search) {
-    filter = {
+   filter = {
+      ...filter,
       $or: [
-        {
-          invoiceID: { $regex: search, $options: "i" },
-          status: true,
-          BranchID: BranchID,
+        { 
+          "patientID": { 
+            $in: await Patient.find({ Name: { $regex: search, $options: "i" } }).distinct("_id") 
+          } 
         },
-      ],
+        { 
+          "doctorID": { 
+            $in: await Doctor.find({ name: { $regex: search, $options: "i" } }).distinct("_id") 
+          } 
+        },
+        { 
+          invoiceID: { $regex: search, $options: "i" } 
+        }
+      ]
     };
-  }
-
+  } 
   const patientInvoice = await PatientInvoice.find(filter)
     .populate("doctorID")
     .populate("patientID")
     .populate("DepartmentID")
     .populate({
-      path: "items.ProcedureID", // Specify the path to the field you want to populate
-      model: "Procedure", // Specify the model name associated with the ObjectId
+      path: "items.ProcedureID",  
+      model: "Procedure",  
     })
     .sort({ createdAt: -1 })
     .limit(limit * 1)
@@ -471,98 +540,10 @@ export const getPatientInvoiceList = async (req, res) => {
   res.status(200).json({
     patientInvoice,
     totalPages: Math.ceil(count / limit),
-    currentPage: page,
-    companyInfo,
+    currentPage: page, 
   });
 };
-
-//==========================================================
-export const get_alert = async (req, res) => {
-  const { BranchID } = req.params;
-  const validationErrors = await validateInputs([
-    [BranchID, "BranchID", "BranchID"],
-  ]);
-  if (Object.keys(validationErrors).length > 0)
-    return res.status(400).json({ errors: validationErrors });
-
-  const today = new Date();
-  const alerts = await Alert.find({
-    status: true,
-    BranchID,
-    startDate: { $lte: today },
-    endDate: { $gte: today },
-  });
-
-  if (!alerts) return res.status(404).send("Document not found");
-
-  res.status(200).send(alerts);
-};
-
-export const get_branch = async (req, res) => {
-  const { BranchID } = req.params;
-  const validationErrors = await validateInputs([
-    [BranchID, "BranchID", "BranchID"],
-  ]);
-  if (Object.keys(validationErrors).length > 0)
-    return res.status(400).json({ errors: validationErrors });
-
-  const branch = await Branch.findById(
-    { _id: BranchID },
-    { securityCredentials: 0 }
-  );
-  if (!branch) return res.status(404).send("branch not found");
-
-  res.status(200).send(branch);
-};
-
-// ================================================
-export const edit_Patient = async (req, res) => {
-  const {
-    Name,
-    age,
-    Gender,
-    address,
-    phone,
-    email,
-    VisitorTypeID,
-    patientTypeID,
-    PatientID,
-    BranchID,
-  } = req.body;
-  const { firstName, lastName } = req.verifiedUser;
-  const validationErrors = await validateInputs([
-    [Name, "name", "Name"],
-    [age, "age", "age"],
-    [Gender, "gender", "Gender"],
-    [phone, "phone", "phone"],
-    [BranchID, "BranchID", "BranchID"],
-  ]);
-
-  if (Object.keys(validationErrors).length > 0)
-    return res.status(400).json({ errors: validationErrors });
-
-  const updatedPatient = {
-    PatientID: PatientID,
-    Name,
-    age,
-    Gender,
-    address: address ? address : "",
-    phone,
-    email: email ? email : "",
-    VisitorTypeID,
-    patientTypeID,
-    createdBy: firstName + " " + lastName,
-    BranchID,
-  };
-
-  await Patient.updateOne({ PatientID }, updatedPatient)
-    .then((data) =>
-      res.status(200).json({ message: "Patient updated successfully", data })
-    )
-    .catch((err) => res.status(200).json({ message: "error", err }));
-};
-
-// ================================================
+//=========================================================================================
 export const editInvoice = async (req, res) => {
   const {
     invoiceID,
@@ -635,8 +616,7 @@ export const editInvoice = async (req, res) => {
     .status(200)
     .json({ message: "Invoice updated successfully", data: updatedInvoice });
 };
-
-//================================================================================
+//=========================================================================================
 export const delete_invoice = async (req, res) => {
   const { invoiceID } = req.params;
   try {
@@ -661,3 +641,33 @@ export const delete_invoice = async (req, res) => {
     res.status(500).send({ message: "Failed to delete invoice" });
   }
 };
+//=========================================================================================
+
+
+// Alert
+export const get_alert = async (req, res) => {
+  const { BranchID } = req.params;
+  const validationErrors = await validateInputs([
+    [BranchID, "BranchID", "BranchID"],
+  ]);
+  if (Object.keys(validationErrors).length > 0)
+    return res.status(400).json({ errors: validationErrors });
+
+  const today = new Date();
+  const alerts = await Alert.find({
+    status: true,
+    BranchID,
+    startDate: { $lte: today },
+    endDate: { $gte: today },
+  });
+
+  if (!alerts) return res.status(404).send("Document not found");
+
+  res.status(200).send(alerts);
+};
+//=========================================================================================
+
+
+
+
+

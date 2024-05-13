@@ -13,7 +13,8 @@ const itemsSchema = new mongoose.Schema({
     ProcedureID: {
         type: mongoose.Schema.Types.ObjectId,
         required: true,
-        ref: Procedure
+        ref: Procedure,
+      
     },
     procedure:{
         type:String,
@@ -61,7 +62,7 @@ const itemsSchema = new mongoose.Schema({
 
 
 const patientInvoiceSchema = new mongoose.Schema({
-    invoiceID:{type:String,required:true,},
+    invoiceID:{type:String,required:true,unique: true,},
     
     BranchID: {
         type: mongoose.Schema.Types.ObjectId,

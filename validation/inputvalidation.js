@@ -1,6 +1,7 @@
 import Branch from "../models/BranchSchema.js";
 import Role from "../models/RoleSchema.js"
 import mongoose from 'mongoose';
+import moment from 'moment-timezone';
 
 
 export const validateName = (name) => {
@@ -22,8 +23,6 @@ export const validateName = (name) => {
     return {}
 }
 
-
-
 export const ValidateRoll = async (rollId) => {
     if (!rollId) {
         return { error: "Please choose a Role" };
@@ -42,13 +41,11 @@ export const ValidateRoll = async (rollId) => {
     return {};
 };
 
-
 export const verifyObjID = (ObjectId)=>{
     if(!ObjectId) return {error:"ObjectID id missing"}
     if(!mongoose.Types.ObjectId.isValid(ObjectId)) return {error:"Invalid ObjectID"}
     return {};
 }
- 
 
 export const ValidateBranchID = async (BranchID) => {
     if (!BranchID) {
@@ -67,7 +64,6 @@ export const ValidateBranchID = async (BranchID) => {
 
     return {};
 };
-
 
 export const validateZipCode = (zipCode) => {
     if (typeof zipCode !== 'string') {
@@ -88,8 +84,7 @@ export const validateZipCode = (zipCode) => {
     return {};
 };
 
-
-export const validatePosision = (position) => {
+export const validatePosition = (position) => {
     if(typeof position !== 'string'){
         return {
             error: "must be string"
@@ -113,26 +108,28 @@ export const validateEmail = (email) => {
     };
 }
 
-
 export const validateMobile = (mobile) => {
-    if(typeof mobile !== 'string'){
+    if (typeof mobile !== 'string') {
         return {
-            error: "must be a string"
-        }
+            error: "number must be a string"
+        };
     }
-    if(mobile.length !== 10){
+
+    // Check if mobile has exactly 10 digits
+    if (mobile.length !== 10) {
         return {
-            error: "must have 10 digits"
-        }
+            error: "number must have exactly 10 digits"
+        };
     }
-    if(parseInt(mobile) === NaN){
+
+    // Check if mobile consists only of numeric characters
+    if (!/^\d+$/.test(mobile)) {
         return {
-            error: "is not valid"
-        }
+            error: "number must contain only numeric digits"
+        };
     }
     return {}
 }
-
 
 export const validatePassword = (password) => {
     if(typeof password !== 'string'){
@@ -152,6 +149,7 @@ export const validatePassword = (password) => {
     }
     return {};
 }
+
 export const loginId = (loginId) => {
     if (typeof loginId !== 'string') {
         return {
@@ -170,7 +168,6 @@ export const loginId = (loginId) => {
     }
     return {};
 }
-
 
 export const validateAddress = (value) => {
     if(value.trim().length === 0){
@@ -191,7 +188,6 @@ export const validateAddress = (value) => {
     return {}
 }
 
-
 export const validatePrice = (price) => {
     if(typeof price !== 'number'){
         return {
@@ -210,6 +206,7 @@ export const validatePrice = (price) => {
     }
     return {}
 }
+
 export const validateGST = (value) => {
     if(typeof value !== 'number'){
         return {
@@ -247,7 +244,6 @@ export const validateGender = (gender) => {
     return {};
 };
 
-
 export const validateAge = (age) => {
     if(typeof age !== 'number'){
         return {
@@ -266,9 +262,7 @@ export const validateAge = (age) => {
     }
     return {}
 }
-
-
-
+ 
 export const validateProductName = (name) => {
     if(typeof name !== 'string'){
         return {
@@ -287,9 +281,7 @@ export const validateProductName = (name) => {
     }
     return {}
 }
-
-
-
+ 
 export const validateProductCategory = (category) => {
     
     if(typeof category !== 'string'){
@@ -301,3 +293,31 @@ export const validateProductCategory = (category) => {
    
     return {}
 }
+
+export const validate_date_time = (dateTimeString) => {  
+    const dateObj = new Date(dateTimeString); 
+
+    if (isNaN(dateObj.getTime())) {
+        return { error: "Date must be in a valid format" };
+    } 
+
+    const currentDate = new Date();  
+        if (dateObj <= currentDate) {
+            return { error: "must be in the future" };
+        } 
+        
+        return {};
+      
+};
+
+export const validateVisitorType = (visitorType) => { 
+    const allowedTypes = ["consultation", "follow-up"]; 
+    if (typeof visitorType === 'string' && visitorType.trim() !== '' && allowedTypes.includes(visitorType.toLowerCase().trim())) {
+        return {}; // No error, valid visitor type
+    } else {
+        return { error: "must be either 'consultation' or 'follow-up'" };
+    }
+};
+
+
+ 

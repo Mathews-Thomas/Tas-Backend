@@ -6,7 +6,7 @@ import PatientType from "./patientTypeSchema.js";
 import PatientInvoice from "./PatientInvoiceSchema.js";
 
 const patientSchema = new mongoose.Schema({
-  PatientID: {type:String},
+  PatientID: {type:String,  unique: true,},
   Name: String,
   age: Number,
   Gender:String,
