@@ -1,6 +1,6 @@
 import express from "express"
 import { serviceHandler } from "../../services/serviceHandler.js"
-import { set_appointment,report_filter,consolidated_progress_reports,edit_MainDepartment, user_details,addMainDepartment,consolidated_reports, AddRole, get_task, delete_task, adminhome_reports, edit_task, set_task, updatetaskStatus, BranchRegister, set_alert, report_filter_options, Edit, addDepartment, updateStatus, get_Branches, addPatientType, list_doctors, Get_add_doctor, list_addOns, get_addOns, adddoctor, addPaymentMethod, addprocedure, addVisitorType, employeeRegister, approve, AlertEdit, ProcedureEdit, departmntEdit, BranchEdit, EmployeeEdit, PaymentMethodEdit, editDoctor, edit_Add_Ons, viewMainDepartment } from "../../services/admin.js"
+import { set_appointment,report_filter,consolidated_progress_reports,edit_MainDepartment, user_details,addMainDepartment,consolidated_reports, AddRole, get_task, delete_task, adminhome_reports, edit_task, set_task, updatetaskStatus, BranchRegister, set_alert, report_filter_options, Edit, addDepartment, updateStatus, get_Branches, addPatientType, list_doctors, Get_add_doctor, list_addOns, get_addOns, adddoctor, addPaymentMethod, addprocedure, addVisitorType, employeeRegister, approve, AlertEdit, ProcedureEdit, departmntEdit, BranchEdit, EmployeeEdit, PaymentMethodEdit, editDoctor, edit_Add_Ons, viewMainDepartment, add_medicine, get_medicines } from "../../services/admin.js"
 import auth from "../../middleware/EmployeeAuth.js"
 
 const router = express.Router()
@@ -92,6 +92,10 @@ router.post("/add-New-Role", serviceHandler(AddRole))
  
 // Appointment
 router.post("/set-appointment",auth(), serviceHandler(set_appointment))
+
+//medicine
+router.post("/medicine/add-medicine", serviceHandler(add_medicine))
+router.get("/medicine/get-medicine", serviceHandler(get_medicines))
 
 const adminRouter = router
 export default adminRouter

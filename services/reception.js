@@ -11,35 +11,38 @@ import Procedure from "../models/ProcedureSchema.js";
 import PatientInvoice from "../models/PatientInvoiceSchema.js";
 import PaymentMethod from "../models/PaymentMethodSchema.js";
 import Alert from "../models/AlertSchema.js";
-import mongoose from "mongoose";  
-
+import mongoose from "mongoose";
 
 // Branch
-export const branchLogin = async (req,res)=>{
-  const {loginId,password} = req.body
-const validationErrors = validateInputs([
-  [loginId,"loginId","loginId"],
-  [password,"password","loginId"]
-])
-if (Object.keys(validationErrors).length > 0) {
-  return res.status(400).json({ errors: validationErrors });
-}
+export const branchLogin = async (req, res) => {
+  const { loginId, password } = req.body;
+  const validationErrors = validateInputs([
+    [loginId, "loginId", "loginId"],
+    [password, "password", "loginId"],
+  ]);
+  if (Object.keys(validationErrors).length > 0) {
+    return res.status(400).json({ errors: validationErrors });
+  }
 
-const branch = await Branch.findOne({ "securityCredentials.loginId": loginId });
-if (!branch) {
-  return res.status(403).json({ error: "Username mismatched" });
-}
-const isPasswordMatch = await bcrypt.compare(password, branch.securityCredentials.password);
-if (!isPasswordMatch) {
-  return res.status(403).json({ error: "Password mismatched" });
-}
+  const branch = await Branch.findOne({
+    "securityCredentials.loginId": loginId,
+  });
+  if (!branch) {
+    return res.status(403).json({ error: "Username mismatched" });
+  }
+  const isPasswordMatch = await bcrypt.compare(
+    password,
+    branch.securityCredentials.password
+  );
+  if (!isPasswordMatch) {
+    return res.status(403).json({ error: "Password mismatched" });
+  }
 
-const branchData = branch.toObject();
-delete branchData.securityCredentials.password; 
-const token = jwtSign(branchData._id.toString())
-     return res.status(200).json({ Branch: branchData,token:token });
-
-}
+  const branchData = branch.toObject();
+  delete branchData.securityCredentials.password;
+  const token = jwtSign(branchData._id.toString());
+  return res.status(200).json({ Branch: branchData, token: token });
+};
 //=========================================================================================
 export const get_branch = async (req, res) => {
   const { BranchID } = req.params;
@@ -58,7 +61,6 @@ export const get_branch = async (req, res) => {
   res.status(200).send(branch);
 };
 //=========================================================================================
-
 
 // Employee
 export const employeeLogin = async (req, res) => {
@@ -95,8 +97,7 @@ export const employeeLogin = async (req, res) => {
 };
 //=========================================================================================
 
-
-// Patient 
+// Patient
 export const addPatient = async (req, res) => {
   const {
     Name,
@@ -128,7 +129,7 @@ export const addPatient = async (req, res) => {
     return res.status(400).send({ errors: "Patient already exists." });
   const patientCount = await Patient.countDocuments({ BranchID });
   const { branchName } = await Branch.findOne({ _id: BranchID });
-  
+
   const newPatient = {
     PatientID: `TM${branchName[0]}${
       patientCount + 1 === Number(PatientID) ? PatientID : patientCount + 1
@@ -155,7 +156,7 @@ export const addPatient = async (req, res) => {
     )
     .catch((err) => res.status(200).json({ message: "error", err }));
 };
-//========================================================================================= 
+//=========================================================================================
 export const getAddPatient = async (req, res) => {
   const BranchID = req.params.BranchID;
   const VisitorTypes = await VisitorType.find({
@@ -282,7 +283,6 @@ export const edit_Patient = async (req, res) => {
 };
 //=========================================================================================
 
-
 // Invoice
 export const addInvoice = async (req, res) => {
   const {
@@ -316,14 +316,13 @@ export const addInvoice = async (req, res) => {
 
   if (Object.keys(validationErrors).length > 0)
     return res.status(400).json({ errors: validationErrors });
-  
 
   const newInvoice = {
     invoiceID: invoiceID,
     patientID: patient._id,
     doctorID: doctorID,
     DepartmentID: DepartmentID,
-    MainDepartmentID:MainDepartmentID,
+    MainDepartmentID: MainDepartmentID,
     paymentMethod: {
       paymentMethod,
       paymentMethodID,
@@ -341,34 +340,35 @@ export const addInvoice = async (req, res) => {
     (item) =>
       item.procedure === "Consultation" ||
       item.ProcedureID === "consultationProcedureID"
-  ); 
- 
- 
+  );
+
   PatientInvoice.create(newInvoice)
     .then((resp) => {
       const updateObject = { $push: { Invoices: resp?._id } };
-      if (includesConsultationFee && includesConsultationFee.length > 0  ) {
-        updateObject.$push.consultation = {
+      if (includesConsultationFee && includesConsultationFee.length > 0) {
+        (updateObject.$push.consultation = {
           Date: new Date(),
           Amount: includesConsultationFee[0].amountToBePaid,
           invoiceID: resp?._id,
-        },
-        updateObject.lastConsultationFeeDate = new Date()         
+        }),
+          (updateObject.lastConsultationFeeDate = new Date());
       }
       const today = new Date();
       const patientCreatedAt = new Date(patient.createdAt);
       const lastConsultationDate = new Date(patient.lastConsultationFeeDate);
-      const daysSinceLastConsultation = Math.floor((today - lastConsultationDate) / (1000 * 60 * 60 * 24));
-      const visitorTypeUpdate = {}; 
+      const daysSinceLastConsultation = Math.floor(
+        (today - lastConsultationDate) / (1000 * 60 * 60 * 24)
+      );
+      const visitorTypeUpdate = {};
 
-      if (patientCreatedAt.toDateString() === today.toDateString()) { 
-        visitorTypeUpdate.VisitorTypeID = "66210e15d067cb8d6252f07a"; // Use the actual ID for "New" 
-      } else if (daysSinceLastConsultation <= 30) { 
-        visitorTypeUpdate.VisitorTypeID = "66210e4ad067cb8d6252f087"; // Use the actual ID for "Visit" 
-      } else {  
+      if (patientCreatedAt.toDateString() === today.toDateString()) {
+        visitorTypeUpdate.VisitorTypeID = "66210e15d067cb8d6252f07a"; // Use the actual ID for "New"
+      } else if (daysSinceLastConsultation <= 30) {
+        visitorTypeUpdate.VisitorTypeID = "66210e4ad067cb8d6252f087"; // Use the actual ID for "Visit"
+      } else {
         visitorTypeUpdate.VisitorTypeID = "66210ea8d067cb8d6252f094"; // Use the actual ID for "Renew"
       }
-   
+
       Object.assign(updateObject, visitorTypeUpdate);
 
       Patient.findOneAndUpdate({ _id: patient._id }, updateObject, {
@@ -423,26 +423,18 @@ export const getInviuceDropdowns = async (req, res) => {
   }`;
 
   // Check for empty results
-  
-  if(!Doctors.length){
-    return res
-  .status(404)
-  .send({ errors: "Doctors lists are empty." }); 
+
+  if (!Doctors.length) {
+    return res.status(404).send({ errors: "Doctors lists are empty." });
   }
-  if(!Procedures.length){
-    return res
-  .status(404)
-  .send({ errors: "Procedures lists are empty." }); 
+  if (!Procedures.length) {
+    return res.status(404).send({ errors: "Procedures lists are empty." });
   }
-  if(!VisitorTypes.length){
-    return res
-  .status(404)
-  .send({ errors: "VisitorTypes lists are empty." }); 
+  if (!VisitorTypes.length) {
+    return res.status(404).send({ errors: "VisitorTypes lists are empty." });
   }
-  if(!PatientTypes.length){
-    return res
-  .status(404)
-  .send({ errors: "PatientTypes lists are empty." }); 
+  if (!PatientTypes.length) {
+    return res.status(404).send({ errors: "PatientTypes lists are empty." });
   }
 
   if (!PatientID)
@@ -484,7 +476,7 @@ export const getPatientInvoiceList = async (req, res) => {
     endDate,
   } = req.query;
   const { BranchID } = req.params;
-  
+
   // Building a filter object for Mongoose query
   let filter = { status: true };
 
@@ -503,32 +495,36 @@ export const getPatientInvoiceList = async (req, res) => {
     }
   }
   if (search) {
-   filter = {
+    filter = {
       ...filter,
       $or: [
-        { 
-          "patientID": { 
-            $in: await Patient.find({ Name: { $regex: search, $options: "i" } }).distinct("_id") 
-          } 
+        {
+          patientID: {
+            $in: await Patient.find({
+              Name: { $regex: search, $options: "i" },
+            }).distinct("_id"),
+          },
         },
-        { 
-          "doctorID": { 
-            $in: await Doctor.find({ name: { $regex: search, $options: "i" } }).distinct("_id") 
-          } 
+        {
+          doctorID: {
+            $in: await Doctor.find({
+              name: { $regex: search, $options: "i" },
+            }).distinct("_id"),
+          },
         },
-        { 
-          invoiceID: { $regex: search, $options: "i" } 
-        }
-      ]
+        {
+          invoiceID: { $regex: search, $options: "i" },
+        },
+      ],
     };
-  } 
+  }
   const patientInvoice = await PatientInvoice.find(filter)
     .populate("doctorID")
     .populate("patientID")
     .populate("DepartmentID")
     .populate({
-      path: "items.ProcedureID",  
-      model: "Procedure",  
+      path: "items.ProcedureID",
+      model: "Procedure",
     })
     .sort({ createdAt: -1 })
     .limit(limit * 1)
@@ -540,7 +536,7 @@ export const getPatientInvoiceList = async (req, res) => {
   res.status(200).json({
     patientInvoice,
     totalPages: Math.ceil(count / limit),
-    currentPage: page, 
+    currentPage: page,
   });
 };
 //=========================================================================================
@@ -548,7 +544,7 @@ export const editInvoice = async (req, res) => {
   const {
     invoiceID,
     MainDepartmentID,
-    
+
     patient,
     doctorID,
     DepartmentID,
@@ -597,7 +593,7 @@ export const editInvoice = async (req, res) => {
       patientID: patient._id,
       doctorID,
       DepartmentID,
-      MainDepartmentID:MainDepartmentID,
+      MainDepartmentID: MainDepartmentID,
       paymentMethod: {
         paymentMethod,
         paymentMethodID,
@@ -643,7 +639,6 @@ export const delete_invoice = async (req, res) => {
 };
 //=========================================================================================
 
-
 // Alert
 export const get_alert = async (req, res) => {
   const { BranchID } = req.params;
@@ -665,9 +660,61 @@ export const get_alert = async (req, res) => {
 
   res.status(200).send(alerts);
 };
+
 //=========================================================================================
 
+// patient fetching with patient id
 
+export const getPatientDetails = async (req, res) => {
+  const { id } = req.params;
 
+  try {
+    // Fetch patient details
+    const patient = await Patient.findOne({ PatientID: id });
 
+    if (!patient) {
+      return res.status(404).json({ message: "Patient not found" });
+    }
 
+    // Aggregate invoice and doctor details
+    const result = await Patient.aggregate([
+      { $match: { PatientID: id } },
+      {
+        $lookup: {
+          from: "patientinvoices",
+          localField: "_id",
+          foreignField: "patientID",
+          as: "result",
+        },
+      },
+      { $unwind: "$result" },
+      {
+        $lookup: {
+          from: "doctors",
+          localField: "result.doctorID",
+          foreignField: "_id",
+          as: "doctorname",
+        },
+      },
+      {
+        $group: {
+          _id: "$_id",
+          PatientID: { $first: "$PatientID" },
+          result: { $push: "$result" },
+          doctorname: { $push: "$doctorname" },
+        },
+      },
+    ]);
+
+    const combinedResult = {
+      patient,
+      aggregatedResult: result.length > 0 ? result[0] : null,
+    };
+
+    res.status(200).json(combinedResult);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+//===========================================================================================
