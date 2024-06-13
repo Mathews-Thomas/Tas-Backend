@@ -94,7 +94,7 @@ router.post("/add-New-Role", serviceHandler(AddRole))
 router.post("/set-appointment",auth(), serviceHandler(set_appointment))
 
 //medicine
-router.post("/medicine/add-medicine", serviceHandler(add_medicine))
+router.post("/medicine/add-medicine",auth(), serviceHandler(add_medicine))
 router.get("/medicine/get-medicine", serviceHandler(get_medicines))
 
 const adminRouter = router
