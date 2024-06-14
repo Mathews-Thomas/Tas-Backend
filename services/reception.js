@@ -735,8 +735,17 @@ export const add_medicine = async (req, res) => {
       department,
     } = req.body;
 
-
-    if (!medicineName || !price || !quantity || !batchNumber || !category || !expirationDate || !strength || !branch || !department) {
+    if (
+      !medicineName ||
+      !price ||
+      !quantity ||
+      !batchNumber ||
+      !category ||
+      !expirationDate ||
+      !strength ||
+      !branch ||
+      !department
+    ) {
       return res.status(400).json({ error: "All fields are required" });
     }
 
@@ -788,14 +797,50 @@ export const add_medicine = async (req, res) => {
 
     // "branch" :"6620f2ee3d1cc04043a54a6d",
     // "department":"6620f898d067cb8d6252edd5"
-   
+
     const createdMedicine = await newMedicine.save();
     return res.status(201).json({
       message: "New medicine added successfully",
       data: createdMedicine,
     });
   } catch (error) {
-    console.error("Error adding medicine:", error.message, error.stack); 
+    console.error("Error adding medicine:", error.message, error.stack);
     res.status(500).json({ error: "failed to add medicine" });
   }
 };
+
+//===================================================================================================================
+
+// get medicines
+
+export const get_medicine = async (req, res) => {
+  const { page = 1, limit = 10, search, DepartmentID } = req.query;
+
+  const { BranchID } = req.params;
+
+  let filter = { status: true };
+
+  if (BranchID) filter.branch = BranchID;
+
+  if (DepartmentID) filter.department = DepartmentID;
+
+  if (search) filter.medicineName = { $regex: search, $options: "i" };
+
+  const medicines = await Medicine.find(filter)
+    .populate("branch")
+    .populate("department")
+    .sort({ createdAt: -1 })
+    .limit(limit * 1)
+    .skip((page - 1) * limit)
+    .exec();
+
+  const count = await Medicine.countDocuments(filter);
+
+  res.status(200).json({
+    medicines,
+    totalPages: Math.ceil(count / limit),
+    currentPage: page,
+  });
+};
+
+//===================================================================================================================

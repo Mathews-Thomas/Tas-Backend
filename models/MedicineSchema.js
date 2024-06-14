@@ -34,6 +34,7 @@ const medicineSchema = new mongoose.Schema({
   createdBy: {
     type: String,
     trim: true,
+    required:true,
   },
   createdAt: {
     type: Date,

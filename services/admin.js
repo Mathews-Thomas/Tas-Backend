@@ -2408,7 +2408,6 @@ export const cancel_appointment = async (req, res) => {
 };
 //=========================================================================================
 
-
 // medicine adding
 export const add_medicine = async (req, res) => {
   try {
@@ -2424,8 +2423,17 @@ export const add_medicine = async (req, res) => {
       department,
     } = req.body;
 
-
-    if (!medicineName || !price || !quantity || !batchNumber || !category || !expirationDate || !strength || !branch || !department) {
+    if (
+      !medicineName ||
+      !price ||
+      !quantity ||
+      !batchNumber ||
+      !category ||
+      !expirationDate ||
+      !strength ||
+      !branch ||
+      !department
+    ) {
       return res.status(400).json({ error: "All fields are required" });
     }
 
@@ -2477,14 +2485,14 @@ export const add_medicine = async (req, res) => {
 
     // "branch" :"6620f2ee3d1cc04043a54a6d",
     // "department":"6620f898d067cb8d6252edd5"
-   
+
     const createdMedicine = await newMedicine.save();
     return res.status(201).json({
       message: "New medicine added successfully",
       data: createdMedicine,
     });
   } catch (error) {
-    console.error("Error adding medicine:", error.message, error.stack); 
+    console.error("Error adding medicine:", error.message, error.stack);
     res.status(500).json({ error: "failed to add medicine" });
   }
 };
@@ -2494,10 +2502,36 @@ export const add_medicine = async (req, res) => {
 // medicine getting
 
 export const get_medicines = async (req, res) => {
-  try {
-    const medicines = await Medicine.find();
-    res.status(200).json({ medicines });
-  } catch (err) {
-    res.status(500).json({ error: "failed to get medicines", err });
+  const { page = 1, limit = 10, search, DepartmentID, BranchID } = req.query;
+
+  let filter = {};
+
+  // Filtering by BranchID if provided
+  if (BranchID) filter.branch = BranchID;
+
+  // Filtering by DepartmentID if provided
+  if (DepartmentID) filter.department = DepartmentID;
+
+  // If a search term is provided, use it to filter by medicine name
+  if (search) {
+    filter.medicineName = { $regex: search, $options: "i" };
   }
+
+  const medicines = await Medicine.find(filter)
+    .populate("branch") // Populate Branch details
+    .populate("department") // Populate Department details
+    .sort({ createdAt: -1 }) // Sort by creation date in descending order
+    .limit(limit * 1) // Limit the number of results returned
+    .skip((page - 1) * limit) // Skip results for pagination
+    .exec();
+
+  const count = await Medicine.countDocuments(filter);
+
+  res.status(200).json({
+    medicines,
+    totalPages: Math.ceil(count / limit),
+    currentPage: page,
+  });
 };
+
+//=================================================================================================================
