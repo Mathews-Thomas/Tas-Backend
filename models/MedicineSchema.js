@@ -1,9 +1,10 @@
 import mongoose from "mongoose";
 import Branch from "./BranchSchema.js";
 import Department from "./DepartmentSchema.js";
+import MainDepartment from "./HeadDepartmentSchema.js";
 
 const medicineSchema = new mongoose.Schema({
-  name: {
+  medicineName: {
     type: String,
     required: true,
   },
@@ -26,24 +27,30 @@ const medicineSchema = new mongoose.Schema({
   category: {
     type: String,
   },
-  purchaseDate: {
+  expirationDate: {
     type: Date,
     required: true,
   },
   createdBy: {
     type: String,
-    trim: true
+    trim: true,
   },
-  BranchID: {
+  createdAt: {
+    type: Date,
+    default: Date.now,
+  },
+  branch: {
     type: mongoose.Schema.Types.ObjectId,
     ref: Branch,
   },
-  DepartmentID: {
+  department: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: Department,
+    ref: MainDepartment,
   },
   status: {
     type: Boolean,
+    required: true,
+    default: false,
   },
 });
 

@@ -2408,41 +2408,83 @@ export const cancel_appointment = async (req, res) => {
 };
 //=========================================================================================
 
-// medicine adding
 
+// medicine adding
 export const add_medicine = async (req, res) => {
   try {
     const {
-      name,
+      medicineName,
       price,
       quantity,
-      description,
       batchNumber,
       category,
-      purchaseDate,
+      expirationDate,
       strength,
+      branch,
+      department,
     } = req.body;
 
-    const newMedicine = new Medicine({
-      name,
-      price,
-      quantity,
-      description,
-      batchNumber,
-      category,
-      purchaseDate,
-      strength,
+
+    if (!medicineName || !price || !quantity || !batchNumber || !category || !expirationDate || !strength || !branch || !department) {
+      return res.status(400).json({ error: "All fields are required" });
+    }
+
+    const { firstName, lastName } = req.verifiedUser;
+    const Role = req.verifiedUser?.role?.roleType;
+
+    // edit the validation later
+    // const validationErrors = await validateInputs([
+    //   [name, "name", "name"],
+    //   [price, "price", "price"],
+    //   [quantity, "price", "price"],
+    //   [batchNumber, "price", "price"],
+    //   [category, "name", "name"],
+    //   [purchaseDate, "date", "date"],
+    //   [strength, "price", "price"],
+    //   [BranchID, "objectID", "BranchID"],
+    //   [MainDepartmentID, "objectID", "MainDepartmentID"],
+    // ]);
+
+    // if (Object.keys(validationErrors).length > 0) {
+    //   return res.status(400).json({ errors: validationErrors });
+    // }
+
+    const MedicineExists = await Medicine.findOne({
+      medicineName: new RegExp("^" + medicineName.trim() + "$", "i"),
+      branch,
+      department,
     });
 
-    const savedMedicine = await newMedicine.save();
-
-    res
-      .status(201)
-      .json({
-        message: "medicine added successfully",
-        medicine: savedMedicine,
+    if (MedicineExists) {
+      return res.status(400).json({
+        error: "Medicine already exists in the same branch and Same department",
       });
+    }
+
+    const newMedicine = new Medicine({
+      medicineName,
+      price,
+      quantity,
+      batchNumber,
+      category,
+      expirationDate,
+      strength,
+      branch,
+      department,
+      createdBy: firstName + " " + lastName,
+      status: Role === "admin" ? true : false,
+    });
+
+    // "branch" :"6620f2ee3d1cc04043a54a6d",
+    // "department":"6620f898d067cb8d6252edd5"
+   
+    const createdMedicine = await newMedicine.save();
+    return res.status(201).json({
+      message: "New medicine added successfully",
+      data: createdMedicine,
+    });
   } catch (error) {
+    console.error("Error adding medicine:", error.message, error.stack); 
     res.status(500).json({ error: "failed to add medicine" });
   }
 };

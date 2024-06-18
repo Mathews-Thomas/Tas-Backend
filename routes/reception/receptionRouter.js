@@ -1,6 +1,6 @@
 import express from "express"
 import {serviceHandler} from "../../services/serviceHandler.js"
-import { addPatient, employeeLogin,get_branch,branchLogin,edit_Patient,editInvoice,delete_invoice, getAddPatient,getPatientList,getInviuceDropdowns, addInvoice,getPatientInvoiceList,get_alert, getPatientDetails } from "../../services/reception.js"
+import { addPatient, employeeLogin,get_branch,branchLogin,edit_Patient,editInvoice,delete_invoice, getAddPatient,getPatientList,getInviuceDropdowns, addInvoice,getPatientInvoiceList,get_alert, getPatientDetails, add_medicine } from "../../services/reception.js"
 import auth from "../../middleware/EmployeeAuth.js"
 
 
@@ -29,6 +29,9 @@ router.delete("/delete-invoice/:invoiceID", auth(), serviceHandler(delete_invoic
 // extra
 router.get("/get-alert/:BranchID", auth(), serviceHandler(get_alert))
 router.get("/get-branch/:BranchID", auth(), serviceHandler(get_branch))
+
+// medicines
+router.post("/medicine/add-medicine",auth(),serviceHandler(add_medicine))
 
 const receptionRouter = router
 export default receptionRouter
