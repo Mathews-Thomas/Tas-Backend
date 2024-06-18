@@ -2420,7 +2420,7 @@ export const add_medicine = async (req, res) => {
       expirationDate,
       strength,
       branch,
-      department,
+      departments,
     } = req.body;
 
     if (
@@ -2432,7 +2432,9 @@ export const add_medicine = async (req, res) => {
       !expirationDate ||
       !strength ||
       !branch ||
-      !department
+      !departments ||
+      !Array.isArray(departments) ||
+      departments.length === 0
     ) {
       return res.status(400).json({ error: "All fields are required" });
     }
@@ -2440,27 +2442,10 @@ export const add_medicine = async (req, res) => {
     const { firstName, lastName } = req.verifiedUser;
     const Role = req.verifiedUser?.role?.roleType;
 
-    // edit the validation later
-    // const validationErrors = await validateInputs([
-    //   [name, "name", "name"],
-    //   [price, "price", "price"],
-    //   [quantity, "price", "price"],
-    //   [batchNumber, "price", "price"],
-    //   [category, "name", "name"],
-    //   [purchaseDate, "date", "date"],
-    //   [strength, "price", "price"],
-    //   [BranchID, "objectID", "BranchID"],
-    //   [MainDepartmentID, "objectID", "MainDepartmentID"],
-    // ]);
-
-    // if (Object.keys(validationErrors).length > 0) {
-    //   return res.status(400).json({ errors: validationErrors });
-    // }
-
     const MedicineExists = await Medicine.findOne({
       medicineName: new RegExp("^" + medicineName.trim() + "$", "i"),
       branch,
-      department,
+      departments: { $in: departments },
     });
 
     if (MedicineExists) {
@@ -2478,7 +2463,7 @@ export const add_medicine = async (req, res) => {
       expirationDate,
       strength,
       branch,
-      department,
+      departments,
       createdBy: firstName + " " + lastName,
       status: Role === "admin" ? true : false,
     });
@@ -2510,7 +2495,10 @@ export const get_medicines = async (req, res) => {
   if (BranchID) filter.branch = BranchID;
 
   // Filtering by DepartmentID if provided
-  if (DepartmentID) filter.department = DepartmentID;
+  if (DepartmentID) {
+    filter.departments = { $in: [DepartmentID] };
+  }
+
 
   // If a search term is provided, use it to filter by medicine name
   if (search) {
@@ -2519,7 +2507,7 @@ export const get_medicines = async (req, res) => {
 
   const medicines = await Medicine.find(filter)
     .populate("branch") // Populate Branch details
-    .populate("department") // Populate Department details
+    .populate("departments") // Populate Department details
     .sort({ createdAt: -1 }) // Sort by creation date in descending order
     .limit(limit * 1) // Limit the number of results returned
     .skip((page - 1) * limit) // Skip results for pagination

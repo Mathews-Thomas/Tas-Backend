@@ -752,27 +752,10 @@ export const add_medicine = async (req, res) => {
     const { firstName, lastName } = req.verifiedUser;
     const Role = req.verifiedUser?.role?.roleType;
 
-    // edit the validation later
-    // const validationErrors = await validateInputs([
-    //   [name, "name", "name"],
-    //   [price, "price", "price"],
-    //   [quantity, "price", "price"],
-    //   [batchNumber, "price", "price"],
-    //   [category, "name", "name"],
-    //   [purchaseDate, "date", "date"],
-    //   [strength, "price", "price"],
-    //   [BranchID, "objectID", "BranchID"],
-    //   [MainDepartmentID, "objectID", "MainDepartmentID"],
-    // ]);
-
-    // if (Object.keys(validationErrors).length > 0) {
-    //   return res.status(400).json({ errors: validationErrors });
-    // }
-
     const MedicineExists = await Medicine.findOne({
       medicineName: new RegExp("^" + medicineName.trim() + "$", "i"),
       branch,
-      department,
+      departments: { $in: [department] },
     });
 
     if (MedicineExists) {
@@ -818,17 +801,20 @@ export const get_medicine = async (req, res) => {
 
   const { BranchID } = req.params;
 
+  //only show status true medicine for user
   let filter = { status: true };
 
   if (BranchID) filter.branch = BranchID;
 
-  if (DepartmentID) filter.department = DepartmentID;
+  if (DepartmentID) {
+    filter.departments = { $in: [DepartmentID] };
+  }
 
   if (search) filter.medicineName = { $regex: search, $options: "i" };
 
   const medicines = await Medicine.find(filter)
     .populate("branch")
-    .populate("department")
+    .populate("departments")
     .sort({ createdAt: -1 })
     .limit(limit * 1)
     .skip((page - 1) * limit)
