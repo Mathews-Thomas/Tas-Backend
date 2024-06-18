@@ -34,6 +34,7 @@ const medicineSchema = new mongoose.Schema({
   createdBy: {
     type: String,
     trim: true,
+    required:true,
   },
   createdAt: {
     type: Date,
@@ -42,11 +43,13 @@ const medicineSchema = new mongoose.Schema({
   branch: {
     type: mongoose.Schema.Types.ObjectId,
     ref: Branch,
+    required:true
   },
-  department: {
+  departments:[ {
     type: mongoose.Schema.Types.ObjectId,
     ref: MainDepartment,
-  },
+    required:true
+  }],
   status: {
     type: Boolean,
     required: true,
