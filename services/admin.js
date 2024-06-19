@@ -12,7 +12,7 @@ import Doctor from "../models/DoctorSchema.js";
 import Alert from "../models/AlertSchema.js";
 import PatientInvoice from "../models/PatientInvoiceSchema.js";
 import moment from "moment-timezone";
-import mongoose, { isValidObjectId } from "mongoose";
+import mongoose, { Model, isValidObjectId } from "mongoose";
 import MainDepartment from "../models/HeadDepartmentSchema.js";
 import Patient from "../models/PatientSchema.js";
 import Appointment from "../models/AppointmentSchema.js";
@@ -30,6 +30,7 @@ const models = {
   Doctor,
   Alert,
   MainDepartment,
+  Medicine
 };
 
 const convertToIST = async (Date) => {
@@ -2487,7 +2488,9 @@ export const add_medicine = async (req, res) => {
 // medicine getting
 
 export const get_medicines = async (req, res) => {
-  const { page = 1, limit = 10, search, DepartmentID, BranchID } = req.query;
+  const { page = 1, limit = 10, search, DepartmentID } = req.query;
+  const BranchID = req.params.BranchID;
+  console.log(BranchID,"branch")
 
   let filter = {};
 
@@ -2498,7 +2501,6 @@ export const get_medicines = async (req, res) => {
   if (DepartmentID) {
     filter.departments = { $in: [DepartmentID] };
   }
-
 
   // If a search term is provided, use it to filter by medicine name
   if (search) {
@@ -2523,3 +2525,65 @@ export const get_medicines = async (req, res) => {
 };
 
 //=================================================================================================================
+
+// medicine editing
+export const edit_medicine = async (req, res) => {
+  const {
+    _id,
+    medicineName,
+    price,
+    quantity,
+    batchNumber,
+    category,
+    expirationDate,
+    strength,
+    branch,
+    departments,
+    status,
+  } = req.body;
+
+  if (!_id) {
+    return res.status(400).send("ID is required");
+  }
+
+  // const collectionName = req.path.split("/")[1];
+  // const Model = models[collectionName];
+  const Model = models["Medicine"];
+
+  const editedMedicine = {
+    medicineName,
+    price,
+    quantity,
+    batchNumber,
+    category,
+    expirationDate,
+    strength,
+    branch,
+    departments,
+    status,
+  };
+
+  if (!Model) {
+    return res.status(404).send("Collection not found");
+  }
+
+  try {
+    const updatedDocument = await Model.updateOne(
+      { _id },
+      { $set: editedMedicine }
+    );
+
+    if (updatedDocument.matchedCount === 0) {
+      return res.status(404).send("Document not found");
+    }
+    res.status(200).json({
+      message: "Medicine updated successfully",
+      updatedDocument,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Error updating document");
+  }
+};
+
+// ==================================================================================================================

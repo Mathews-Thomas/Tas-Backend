@@ -4,6 +4,7 @@ import { addPatient, employeeLogin,get_branch,branchLogin,edit_Patient,editInvoi
 import auth from "../../middleware/EmployeeAuth.js"
 
 
+
 const router = express.Router()
 
 // Employee Login 
@@ -33,6 +34,7 @@ router.get("/get-branch/:BranchID", auth(), serviceHandler(get_branch))
 // medicines
 router.post("/medicine/add-medicine",auth(),serviceHandler(add_medicine))
 router.get("/medicine/get-medicines/:BranchID",serviceHandler(get_medicine))
+
 
 const receptionRouter = router
 export default receptionRouter

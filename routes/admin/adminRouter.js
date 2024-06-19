@@ -44,6 +44,7 @@ import {
   viewMainDepartment,
   add_medicine,
   get_medicines,
+  edit_medicine,
 } from "../../services/admin.js";
 import auth from "../../middleware/EmployeeAuth.js";
 
@@ -150,7 +151,8 @@ router.post("/set-appointment", auth(), serviceHandler(set_appointment));
 
 //medicine
 router.post("/medicine/add-medicine", auth(), serviceHandler(add_medicine));
-router.get("/medicine/get-medicine", serviceHandler(get_medicines));
+router.get("/medicine/get-medicine/:BranchID", serviceHandler(get_medicines));
+router.put("/medicine/edit-medicine",serviceHandler(edit_medicine))
 
 const adminRouter = router;
 export default adminRouter;
