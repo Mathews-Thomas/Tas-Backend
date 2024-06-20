@@ -776,6 +776,7 @@ export const add_medicine = async (req, res) => {
       department,
       createdBy: firstName + " " + lastName,
       status: Role === "admin" ? true : false,
+      approved: Role === "admin" ? true : false,
     });
 
     // "branch" :"6620f2ee3d1cc04043a54a6d",

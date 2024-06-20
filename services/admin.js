@@ -2467,6 +2467,7 @@ export const add_medicine = async (req, res) => {
       departments,
       createdBy: firstName + " " + lastName,
       status: Role === "admin" ? true : false,
+      approved: Role === "admin" ? true : false
     });
 
     // "branch" :"6620f2ee3d1cc04043a54a6d",
@@ -2489,8 +2490,9 @@ export const add_medicine = async (req, res) => {
 
 export const get_medicines = async (req, res) => {
   const { page = 1, limit = 10, search, DepartmentID } = req.query;
-  const BranchID = req.params.BranchID;
-  console.log(BranchID,"branch")
+
+   const BranchID = req.params.BranchID;
+  // console.log(BranchID,"branch")
 
   let filter = {};
 
@@ -2546,8 +2548,7 @@ export const edit_medicine = async (req, res) => {
     return res.status(400).send("ID is required");
   }
 
-  // const collectionName = req.path.split("/")[1];
-  // const Model = models[collectionName];
+  
   const Model = models["Medicine"];
 
   const editedMedicine = {
