@@ -30,7 +30,7 @@ const models = {
   Doctor,
   Alert,
   MainDepartment,
-  Medicine
+  Medicine,
 };
 
 const convertToIST = async (Date) => {
@@ -2467,7 +2467,7 @@ export const add_medicine = async (req, res) => {
       departments,
       createdBy: firstName + " " + lastName,
       status: Role === "admin" ? true : false,
-      approved: Role === "admin" ? true : false
+      approved: Role === "admin" ? true : false,
     });
 
     // "branch" :"6620f2ee3d1cc04043a54a6d",
@@ -2491,7 +2491,7 @@ export const add_medicine = async (req, res) => {
 export const get_medicines = async (req, res) => {
   const { page = 1, limit = 10, search, DepartmentID } = req.query;
 
-   const BranchID = req.params.BranchID;
+  const BranchID = req.params.BranchID;
   // console.log(BranchID,"branch")
 
   let filter = {};
@@ -2511,7 +2511,7 @@ export const get_medicines = async (req, res) => {
 
   const medicines = await Medicine.find(filter)
     .populate("branch") // Populate Branch details
-    .populate("departments") // Populate Department details
+    .populate("departments") // Populate Department detailss
     .sort({ createdAt: -1 }) // Sort by creation date in descending order
     .limit(limit * 1) // Limit the number of results returned
     .skip((page - 1) * limit) // Skip results for pagination
@@ -2542,13 +2542,14 @@ export const edit_medicine = async (req, res) => {
     branch,
     departments,
     status,
+    approved,
+    editedBy,
   } = req.body;
 
   if (!_id) {
     return res.status(400).send("ID is required");
   }
 
-  
   const Model = models["Medicine"];
 
   const editedMedicine = {
@@ -2562,6 +2563,8 @@ export const edit_medicine = async (req, res) => {
     branch,
     departments,
     status,
+    approved,
+    editedBy,
   };
 
   if (!Model) {
@@ -2588,3 +2591,40 @@ export const edit_medicine = async (req, res) => {
 };
 
 // ==================================================================================================================
+
+// medicine status updating
+
+export const update_medicine_status = async (req, res) => {
+  const { _id, status } = req.body;
+
+  if (!_id) {
+    return res.status(400).send("ID is required");
+  }
+
+  const Model = models["Medicine"];
+
+  if (!Model) {
+    return res.status(404).send("Collection not found");
+  }
+
+  try {
+    const updatedDocument = await Model.updateOne(
+      { _id },
+      { $set: { status } }
+    );
+
+    if (updatedDocument.matchedCount === 0) {
+      return res.status(404).send("Document not found");
+    }
+    res.status(200).json({
+      message: "Medicine status updated successfully",
+      updatedDocument,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Error updating document");
+  }
+};
+
+
+//===============================================================================================================

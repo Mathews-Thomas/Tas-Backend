@@ -36,5 +36,6 @@ router.post("/medicine/add-medicine",auth(),serviceHandler(add_medicine))
 router.get("/medicine/get-medicines/:BranchID",serviceHandler(get_medicine))
 
 
+
 const receptionRouter = router
 export default receptionRouter
