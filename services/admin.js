@@ -2546,10 +2546,13 @@ export const edit_medicine = async (req, res) => {
     editedBy,
   } = req.body;
 
+ // console.log(departments, "departments");
+
   if (!_id) {
     return res.status(400).send("ID is required");
   }
-
+  const departmentIds = departments.map((department) => department.id);
+ 
   const Model = models["Medicine"];
 
   const editedMedicine = {
@@ -2561,7 +2564,7 @@ export const edit_medicine = async (req, res) => {
     expirationDate,
     strength,
     branch,
-    departments,
+    departments : departmentIds,
     status,
     approved,
     editedBy,
