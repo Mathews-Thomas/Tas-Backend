@@ -17,6 +17,7 @@ import MainDepartment from "../models/HeadDepartmentSchema.js";
 import Patient from "../models/PatientSchema.js";
 import Appointment from "../models/AppointmentSchema.js";
 import Medicine from "../models/MedicineSchema.js";
+//import MedicineInvoice from "../models/MedicineInvoiceSchema.js";
 
 const models = {
   Branch,
@@ -30,7 +31,7 @@ const models = {
   Doctor,
   Alert,
   MainDepartment,
-  Medicine,
+  Medicine
 };
 
 const convertToIST = async (Date) => {
@@ -2546,13 +2547,13 @@ export const edit_medicine = async (req, res) => {
     editedBy,
   } = req.body;
 
- // console.log(departments, "departments");
+  // console.log(departments, "departments");
 
   if (!_id) {
     return res.status(400).send("ID is required");
   }
   const departmentIds = departments.map((department) => department.id);
- 
+
   const Model = models["Medicine"];
 
   const editedMedicine = {
@@ -2564,7 +2565,7 @@ export const edit_medicine = async (req, res) => {
     expirationDate,
     strength,
     branch,
-    departments : departmentIds,
+    departments: departmentIds,
     status,
     approved,
     editedBy,
@@ -2629,5 +2630,73 @@ export const update_medicine_status = async (req, res) => {
   }
 };
 
-
 //===============================================================================================================
+
+// medicine invoice
+// export const add_medicine_invoice = async (req, res) => {
+//   const {
+//     invoiceID,
+//     MainDepartmentID,
+//     patient,
+//     doctorID,
+//     items,
+//     totalAmount,
+//     BranchID,
+//     paymentMethod,
+//     paymentMethodID,
+//     totalDiscount,
+//     amountToBePaid,
+//   } = req.body;
+
+//   const { firstName, lastName } = req.verifiedUser;
+
+//   const validationErrors = await validateInputs([
+//     [doctorID, "objectId", "doctorID"],
+    
+//     [MainDepartmentID, "objectId", "MainDepartmentID"],
+//     [paymentMethodID, "objectId", "paymentMethodID"],
+//     [patient._id, "objectId", "patientID"],
+//     [invoiceID, "name", "invoiceID"],
+//     [totalAmount, "price", "totalAmount"],
+//     [amountToBePaid, "price", "amountToBePaid"],
+//     [BranchID, "BranchID", "BranchID"],
+//   ]);
+
+//   if (Object.keys(validationErrors).length > 0)
+//     return res.status(400).json({ errors: validationErrors });
+
+//   const newInvoice = {
+//     invoiceID: invoiceID,
+//     patientID: patient._id,
+//     doctorID: doctorID,
+//     MainDepartmentID: MainDepartmentID,
+//     paymentMethodID: {
+//       paymentMethod,
+//       paymentMethodID,
+//     },
+//     items: items,
+//     totalAmount: totalAmount,
+//     totalDiscount: totalDiscount,
+//     amountToBePaid: amountToBePaid,
+//     BranchID: BranchID,
+//     status: true,
+//     createdBy: `${firstName} ${lastName}`,
+//   };
+
+//   try {
+//     const resp = await MedicineInvoice.create(newInvoice);
+
+//     for (const item of items) {
+//       await Medicine.findByIdAndUpdate(item.MedicineID, {
+//         $inc: { quantity: -item.quantity },
+//       });
+//     }
+
+//     res.status(200).json({ message: "Medicine invoice Created", data: resp });
+//   } catch (err) {
+//     res.status(400).json({ error: "Error creating invoice", err });
+//     console.log(err);
+//   }
+// };
+ 
+
