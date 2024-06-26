@@ -46,6 +46,7 @@ import {
   get_medicines,
   edit_medicine,
   update_medicine_status,
+  add_medicine_invoice,
   // add_medicine_invoice,
 } from "../../services/admin.js";
 import auth from "../../middleware/EmployeeAuth.js";
@@ -162,7 +163,7 @@ router.put(
 );
 
 // medicine invoice 
-// router.post("/medicine/add-invoice", serviceHandler(add_medicine_invoice));
+ router.post("/medicine/add-invoice", serviceHandler(add_medicine_invoice));
 
 const adminRouter = router;
 export default adminRouter;

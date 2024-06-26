@@ -1,11 +1,10 @@
 import mongoose from "mongoose";
-import Medicine from "./MedicineSchema";
-import Branch from "./BranchSchema";
-import Patient from "./PatientSchema";
-import Doctor from "./DoctorSchema";
-import MainDepartment from "./HeadDepartmentSchema";
-import PaymentMethod from "./PaymentMethodSchema";
-import { addCreatedAtIST } from "../Commonfn/ISTFormat";
+import Medicine from "./MedicineSchema.js";
+import Branch from "./BranchSchema.js";
+import Patient from "./PatientSchema.js";
+import Doctor from "./DoctorSchema.js";
+import MainDepartment from "./HeadDepartmentSchema.js";
+import PaymentMethod from "./PaymentMethodSchema.js";
 
 const medicineItemsSchema = new mongoose.Schema({
   MedicineID: {
@@ -37,7 +36,7 @@ const medicineItemsSchema = new mongoose.Schema({
   },
   GST: {
     type: Number,
-    requiered: true,
+    required: true,
   },
   gstAmount: {
     type: Number,
@@ -48,6 +47,18 @@ const medicineItemsSchema = new mongoose.Schema({
     required: true,
   },
 });
+
+// const paymentMethodSchema = new mongoose.Schema({
+//     paymentMethod: {
+//       type: String,
+//       required: true,
+//     },
+//     paymentMethodID: {
+//       type: mongoose.Schema.Types.ObjectId,
+//       required: true,
+//       ref: PaymentMethod, 
+//     },
+//   }, { _id: false });
 
 const medicineInvoiceSchema = new mongoose.Schema({
   invoiceID: {
@@ -89,11 +100,11 @@ const medicineInvoiceSchema = new mongoose.Schema({
   },
   paymentMethod: {
     paymentMethod: String,
-    paymentMethodID: {
-      type: mongoose.Schema.Types.ObjectId,
-      required: true,
-      ref: PaymentMethod,
-    },
+    PaymentMethodID:{
+        type: mongoose.Schema.Types.ObjectId,
+        required: true,
+        ref: PaymentMethod,
+    }
   },
   createdBy: String,
   createdAt: {
@@ -109,7 +120,6 @@ const medicineInvoiceSchema = new mongoose.Schema({
   },
 });
 
-await addCreatedAtIST(medicineInvoiceSchema);
 const MedicineInvoice = mongoose.model("MedicineInvoice", medicineInvoiceSchema);
- 
+
 export default MedicineInvoice;

@@ -17,7 +17,7 @@ import MainDepartment from "../models/HeadDepartmentSchema.js";
 import Patient from "../models/PatientSchema.js";
 import Appointment from "../models/AppointmentSchema.js";
 import Medicine from "../models/MedicineSchema.js";
-//import MedicineInvoice from "../models/MedicineInvoiceSchema.js";
+import MedicineInvoice from "../models/MedicineInvoiceSchema.js";
 
 const models = {
   Branch,
@@ -2633,70 +2633,76 @@ export const update_medicine_status = async (req, res) => {
 //===============================================================================================================
 
 // medicine invoice
-// export const add_medicine_invoice = async (req, res) => {
-//   const {
-//     invoiceID,
-//     MainDepartmentID,
-//     patient,
-//     doctorID,
-//     items,
-//     totalAmount,
-//     BranchID,
-//     paymentMethod,
-//     paymentMethodID,
-//     totalDiscount,
-//     amountToBePaid,
-//   } = req.body;
+export const add_medicine_invoice = async (req, res) => {
+  const {
+    invoiceID,
+    MainDepartmentID,
+    patient,
+    doctorID,
+    items,
+    totalAmount,
+    BranchID,
+    paymentMethod,
+    PaymentMethodID,
+    totalDiscount,
+    amountToBePaid,
+  } = req.body;
 
-//   const { firstName, lastName } = req.verifiedUser;
+   const { firstName, lastName } = req.verifiedUser;
 
-//   const validationErrors = await validateInputs([
-//     [doctorID, "objectId", "doctorID"],
+  console.log(paymentMethod, "paymentMethod");
+  console.log(PaymentMethodID, "paymentMethodID");
+
+   const validationErrors = await validateInputs([
+    [doctorID, "objectId", "doctorID"],
     
-//     [MainDepartmentID, "objectId", "MainDepartmentID"],
-//     [paymentMethodID, "objectId", "paymentMethodID"],
-//     [patient._id, "objectId", "patientID"],
-//     [invoiceID, "name", "invoiceID"],
-//     [totalAmount, "price", "totalAmount"],
-//     [amountToBePaid, "price", "amountToBePaid"],
-//     [BranchID, "BranchID", "BranchID"],
-//   ]);
+    [MainDepartmentID, "objectId", "MainDepartmentID"],
+    [PaymentMethodID, "objectId", "paymentMethodID"],
+    [patient._id, "objectId", "patientID"],
+    [invoiceID, "name", "invoiceID"],
+    [totalAmount, "price", "totalAmount"],
+    [amountToBePaid, "price", "amountToBePaid"],
+    [BranchID, "BranchID", "BranchID"],
+  ]);
 
-//   if (Object.keys(validationErrors).length > 0)
-//     return res.status(400).json({ errors: validationErrors });
+  if (Object.keys(validationErrors).length > 0)
+    return res.status(400).json({ errors: validationErrors });
 
-//   const newInvoice = {
-//     invoiceID: invoiceID,
-//     patientID: patient._id,
-//     doctorID: doctorID,
-//     MainDepartmentID: MainDepartmentID,
-//     paymentMethodID: {
-//       paymentMethod,
-//       paymentMethodID,
-//     },
-//     items: items,
-//     totalAmount: totalAmount,
-//     totalDiscount: totalDiscount,
-//     amountToBePaid: amountToBePaid,
-//     BranchID: BranchID,
-//     status: true,
-//     createdBy: `${firstName} ${lastName}`,
-//   };
+  const newInvoice = {
+    invoiceID: invoiceID,
+    patientID: patient._id,
+    doctorID: doctorID,
+    MainDepartmentID: MainDepartmentID,
+    paymentMethod: {
+      paymentMethod,
+      PaymentMethodID,
+    },
+    items: items,
+    totalAmount: totalAmount,
+    totalDiscount: totalDiscount,
+    amountToBePaid: amountToBePaid,
+    BranchID: BranchID,
+    status: true,
+    createdBy: `${firstName} ${lastName}`,
+  };
 
-//   try {
-//     const resp = await MedicineInvoice.create(newInvoice);
+  
 
-//     for (const item of items) {
-//       await Medicine.findByIdAndUpdate(item.MedicineID, {
-//         $inc: { quantity: -item.quantity },
-//       });
-//     }
+  try {
+    const resp = await MedicineInvoice.create(newInvoice);
 
-//     res.status(200).json({ message: "Medicine invoice Created", data: resp });
-//   } catch (err) {
-//     res.status(400).json({ error: "Error creating invoice", err });
-//     console.log(err);
-//   }
-// };
+    for (const item of items) {
+      await Medicine.findByIdAndUpdate(item.MedicineID, {
+        $inc: { quantity: -item.quantity },
+      });
+    }
+
+    res.status(200).json({ message: "Medicine invoice Created", data: resp });
+  } catch (err) {
+    res.status(400).json({ error: "Error creating invoice", err });
+    console.log(err);
+  }
+};
  
 
+//===============================================================================================================
