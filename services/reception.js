@@ -732,8 +732,10 @@ export const add_medicine = async (req, res) => {
       expirationDate,
       strength,
       branch,
-      department,
+      departments,
     } = req.body;
+
+   // console.log(department, "department");
 
     if (
       !medicineName ||
@@ -744,7 +746,7 @@ export const add_medicine = async (req, res) => {
       !expirationDate ||
       !strength ||
       !branch ||
-      !department
+      !departments
     ) {
       return res.status(400).json({ error: "All fields are required" });
     }
@@ -755,7 +757,7 @@ export const add_medicine = async (req, res) => {
     const MedicineExists = await Medicine.findOne({
       medicineName: new RegExp("^" + medicineName.trim() + "$", "i"),
       branch,
-      departments: { $in: [department] },
+      departments: { $in: [departments] },
     });
 
     if (MedicineExists) {
@@ -773,7 +775,7 @@ export const add_medicine = async (req, res) => {
       expirationDate,
       strength,
       branch,
-      department,
+      departments,
       createdBy: firstName + " " + lastName,
       status: Role === "admin" ? true : false,
       approved: Role === "admin" ? true : false,

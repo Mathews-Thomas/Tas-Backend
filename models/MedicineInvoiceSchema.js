@@ -48,17 +48,6 @@ const medicineItemsSchema = new mongoose.Schema({
   },
 });
 
-// const paymentMethodSchema = new mongoose.Schema({
-//     paymentMethod: {
-//       type: String,
-//       required: true,
-//     },
-//     paymentMethodID: {
-//       type: mongoose.Schema.Types.ObjectId,
-//       required: true,
-//       ref: PaymentMethod, 
-//     },
-//   }, { _id: false });
 
 const medicineInvoiceSchema = new mongoose.Schema({
   invoiceID: {
