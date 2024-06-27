@@ -16,26 +16,20 @@ const medicineSchema = new mongoose.Schema({
     type: Number,
     required: true,
   },
-  strength: {
-    type: Number,
-    required: true,
-  },
   batchNumber: {
     type: String,
     required: true,
   },
-  category: {
-    type: String,
-  },
+
   expirationDate: {
     type: Date,
     required: true,
   },
-  createdBy: {
-    type: String,
-    trim: true,
-    required: true,
-  },
+  // createdBy: {
+  //   type: String,
+  //   trim: true,
+  //   required: true,
+  // },
   createdAt: {
     type: Date,
     default: Date.now,
@@ -62,6 +56,9 @@ const medicineSchema = new mongoose.Schema({
     required: true,
     default: false,
   },
+  HSNCode: String,
+  gst: Number,
+  manufacturerName: String,
 });
 
 const Medicine = mongoose.model("Medicine", medicineSchema);

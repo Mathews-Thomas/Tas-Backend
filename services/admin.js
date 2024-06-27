@@ -2418,11 +2418,12 @@ export const add_medicine = async (req, res) => {
       price,
       quantity,
       batchNumber,
-      category,
       expirationDate,
-      strength,
       branch,
       departments,
+      HSNCode,
+      gst,
+      manufacturerName,
     } = req.body;
 
     if (
@@ -2430,15 +2431,17 @@ export const add_medicine = async (req, res) => {
       !price ||
       !quantity ||
       !batchNumber ||
-      !category ||
       !expirationDate ||
-      !strength ||
       !branch ||
       !departments ||
       !Array.isArray(departments) ||
       departments.length === 0
     ) {
       return res.status(400).json({ error: "All fields are required" });
+    }
+
+    if(price <=0 || quantity <=0){
+      return res.status(400).json({error: "Price and Quantity should be greater than 0"});
     }
 
     const { firstName, lastName } = req.verifiedUser;
@@ -2461,9 +2464,10 @@ export const add_medicine = async (req, res) => {
       price,
       quantity,
       batchNumber,
-      category,
       expirationDate,
-      strength,
+      HSNCode,
+      gst,
+      manufacturerName,
       branch,
       departments,
       createdBy: firstName + " " + lastName,
@@ -2707,13 +2711,12 @@ export const add_medicine_invoice = async (req, res) => {
 // medicine invoice dropdown getting
 
 export const get_Medicine_Invoice_Dropdowns = async (req, res) => {
-  const { PatientID, BranchID} = req.query;
+  const { PatientID, BranchID } = req.query;
   const { firstName, lastName } = req.verifiedUser;
- 
+
   console.log(PatientID, "PatientID");
   console.log(BranchID, "BranchID");
-//  console.log(mainDepartmentID, "mainDepartmentID");
-
+  //  console.log(mainDepartmentID, "mainDepartmentID");
 
   try {
     const [
