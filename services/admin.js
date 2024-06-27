@@ -31,7 +31,7 @@ const models = {
   Doctor,
   Alert,
   MainDepartment,
-  Medicine
+  Medicine,
 };
 
 const convertToIST = async (Date) => {
@@ -2648,14 +2648,14 @@ export const add_medicine_invoice = async (req, res) => {
     amountToBePaid,
   } = req.body;
 
-   const { firstName, lastName } = req.verifiedUser;
+  const { firstName, lastName } = req.verifiedUser;
 
   console.log(paymentMethod, "paymentMethod");
   console.log(PaymentMethodID, "paymentMethodID");
 
-   const validationErrors = await validateInputs([
+  const validationErrors = await validateInputs([
     [doctorID, "objectId", "doctorID"],
-    
+
     [MainDepartmentID, "objectId", "MainDepartmentID"],
     [PaymentMethodID, "objectId", "paymentMethodID"],
     [patient._id, "objectId", "patientID"],
@@ -2686,8 +2686,6 @@ export const add_medicine_invoice = async (req, res) => {
     createdBy: `${firstName} ${lastName}`,
   };
 
-  
-
   try {
     const resp = await MedicineInvoice.create(newInvoice);
 
@@ -2703,6 +2701,107 @@ export const add_medicine_invoice = async (req, res) => {
     console.log(err);
   }
 };
- 
 
 //===============================================================================================================
+
+// medicine invoice dropdown getting
+
+export const get_Medicine_Invoice_Dropdowns = async (req, res) => {
+  const { PatientID, BranchID} = req.query;
+  const { firstName, lastName } = req.verifiedUser;
+ 
+  console.log(PatientID, "PatientID");
+  console.log(BranchID, "BranchID");
+//  console.log(mainDepartmentID, "mainDepartmentID");
+
+
+  try {
+    const [
+      Doctors,
+      Patients,
+      Medicines,
+      VisitorTypes,
+      PatientTypes,
+      branch,
+      paymentMethods,
+    ] = await Promise.all([
+      Doctor.find({
+        BranchID,
+        status: true,
+        isApproved: true,
+      }).populate("DepartmentID"),
+      Patient.find({
+        PatientID,
+      })
+        .populate("VisitorTypeID")
+        .populate("patientTypeID"),
+      Medicine.find({
+        status: true,
+        approved: true,
+        branch: BranchID,
+        // departments: mainDepartmentID,
+      }),
+      VisitorType.find({ status: true, isApproved: true }),
+      PatientType.find({ status: true, isApproved: true }),
+      Branch.findOne(
+        {
+          _id: BranchID,
+          isApproved: true,
+        },
+        { securityCredentials: 0 }
+      ),
+      PaymentMethod.find({ status: true, isApproved: true }),
+    ]);
+
+    if (!branch) return res.status(404).send({ errors: "Branch not found." });
+
+    const MedicineInvoiceCount = await MedicineInvoice.countDocuments({
+      BranchID,
+    });
+    const nextInvoiceID = `MIN${branch.branchName[0].toUpperCase()}${
+      MedicineInvoiceCount + 1
+    }`;
+
+    if (!Doctors.length) {
+      return res.status(404).send({ errors: "Doctors lists are empty." });
+    }
+    if (!Medicines.length) {
+      return res.status(404).send({ errors: "Medicines lists are empty." });
+    }
+    if (!VisitorTypes.length) {
+      return res.status(404).send({ errors: "VisitorTypes lists are empty." });
+    }
+    if (!PatientTypes.length) {
+      return res.status(404).send({ errors: "PatientTypes lists are empty." });
+    }
+
+    if (!PatientID)
+      return res.json({
+        Patients: null,
+        nextInvoiceID,
+        branch,
+        Doctors,
+        Medicines,
+        VisitorTypes,
+        PatientTypes,
+        paymentMethods,
+        createdBy: firstName + " " + lastName,
+      });
+
+    res.status(200).json({
+      nextInvoiceID,
+      branch,
+      Patients,
+      Doctors,
+      Medicines,
+      VisitorTypes,
+      PatientTypes,
+      paymentMethods,
+      createdBy: firstName + " " + lastName,
+    });
+    console.log(nextInvoiceID, "nextInvoiceID");
+  } catch (err) {
+    console.log(err);
+    res.status(500).send({ errors: "An error occurred while fetching data." });
+  }
+};

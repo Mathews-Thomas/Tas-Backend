@@ -735,7 +735,7 @@ export const add_medicine = async (req, res) => {
       departments,
     } = req.body;
 
-   // console.log(department, "department");
+   
 
     if (
       !medicineName ||
