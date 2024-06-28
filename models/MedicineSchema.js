@@ -25,11 +25,11 @@ const medicineSchema = new mongoose.Schema({
     type: Date,
     required: true,
   },
-  // createdBy: {
-  //   type: String,
-  //   trim: true,
-  //   required: true,
-  // },
+  createdBy: {
+    type: String,
+    trim: true,
+    required: true,
+  },
   createdAt: {
     type: Date,
     default: Date.now,
@@ -59,6 +59,8 @@ const medicineSchema = new mongoose.Schema({
   HSNCode: String,
   gst: Number,
   manufacturerName: String,
+  gstOption:String,
+  editedBy: { type: String, trim: true },
 });
 
 const Medicine = mongoose.model("Medicine", medicineSchema);

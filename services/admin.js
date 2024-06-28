@@ -2424,6 +2424,7 @@ export const add_medicine = async (req, res) => {
       HSNCode,
       gst,
       manufacturerName,
+      gstOption,
     } = req.body;
 
     if (
@@ -2440,8 +2441,10 @@ export const add_medicine = async (req, res) => {
       return res.status(400).json({ error: "All fields are required" });
     }
 
-    if(price <=0 || quantity <=0){
-      return res.status(400).json({error: "Price and Quantity should be greater than 0"});
+    if (price <= 0 || quantity <= 0) {
+      return res
+        .status(400)
+        .json({ error: "Price and Quantity should be greater than 0" });
     }
 
     const { firstName, lastName } = req.verifiedUser;
@@ -2470,6 +2473,7 @@ export const add_medicine = async (req, res) => {
       manufacturerName,
       branch,
       departments,
+      gstOption,
       createdBy: firstName + " " + lastName,
       status: Role === "admin" ? true : false,
       approved: Role === "admin" ? true : false,
@@ -2541,22 +2545,29 @@ export const edit_medicine = async (req, res) => {
     price,
     quantity,
     batchNumber,
-    category,
+    manufacturerName,
     expirationDate,
-    strength,
+    HSNCode,
     branch,
     departments,
     status,
     approved,
-    editedBy,
+    gst,
+    gstOption,
   } = req.body;
 
-  // console.log(departments, "departments");
+
+  const { firstName, lastName } = req.verifiedUser;
 
   if (!_id) {
     return res.status(400).send("ID is required");
   }
   const departmentIds = departments.map((department) => department.id);
+
+  let updatedGst = gst;
+  if(gstOption == "exception"){
+    updatedGst = null;
+  }
 
   const Model = models["Medicine"];
 
@@ -2565,15 +2576,18 @@ export const edit_medicine = async (req, res) => {
     price,
     quantity,
     batchNumber,
-    category,
+    manufacturerName,
     expirationDate,
-    strength,
+    HSNCode,
     branch,
     departments: departmentIds,
     status,
     approved,
-    editedBy,
+    editedBy: firstName + " " + lastName,
+    gst:updatedGst,
+    gstOption
   };
+  
 
   if (!Model) {
     return res.status(404).send("Collection not found");

@@ -163,9 +163,13 @@ router.put(
   serviceHandler(update_medicine_status)
 );
 
-// medicine invoice 
- router.post("/medicine/add-invoice", serviceHandler(add_medicine_invoice));
- router.get("/medicine/get-invoice", auth(),serviceHandler(get_Medicine_Invoice_Dropdowns));
+// medicine invoice
+router.post("/medicine/add-invoice", serviceHandler(add_medicine_invoice));
+router.get(
+  "/medicine/get-invoice",
+  auth(),
+  serviceHandler(get_Medicine_Invoice_Dropdowns)
+);
 
 const adminRouter = router;
 export default adminRouter;
