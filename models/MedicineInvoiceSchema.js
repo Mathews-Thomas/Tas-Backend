@@ -20,9 +20,6 @@ const medicineItemsSchema = new mongoose.Schema({
     type: Number,
     required: true,
   },
-  discountType: {
-    type: String,
-  },
   discount: {
     type: Number,
   },
@@ -32,7 +29,7 @@ const medicineItemsSchema = new mongoose.Schema({
   },
   amountToBePaid: {
     type: Number,
-    required: true,
+    
   },
   GST: {
     type: Number,
@@ -44,7 +41,7 @@ const medicineItemsSchema = new mongoose.Schema({
   },
   baseAmount: {
     type: Number,
-    required: true,
+    
   },
 });
 
@@ -89,7 +86,7 @@ const medicineInvoiceSchema = new mongoose.Schema({
   },
   paymentMethod: {
     paymentMethod: String,
-    PaymentMethodID:{
+    paymentMethodID:{
         type: mongoose.Schema.Types.ObjectId,
         required: true,
         ref: PaymentMethod,

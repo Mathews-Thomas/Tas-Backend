@@ -48,6 +48,7 @@ import {
   update_medicine_status,
   add_medicine_invoice,
   get_Medicine_Invoice_Dropdowns,
+  get_medicine_invoice_list,
   // add_medicine_invoice,
 } from "../../services/admin.js";
 import auth from "../../middleware/EmployeeAuth.js";
@@ -164,11 +165,20 @@ router.put(
 );
 
 // medicine invoice
-router.post("/medicine/add-invoice", serviceHandler(add_medicine_invoice));
+router.post(
+  "/medicine/add-invoice",
+  auth(),
+  serviceHandler(add_medicine_invoice)
+);
 router.get(
-  "/medicine/get-invoice",
+  "/medicine/get-invoice-dropdowns",
   auth(),
   serviceHandler(get_Medicine_Invoice_Dropdowns)
+);
+router.get(
+  "/medicine/get-invoice-list/:BranchID",
+  auth(),
+  serviceHandler(get_medicine_invoice_list)
 );
 
 const adminRouter = router;

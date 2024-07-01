@@ -19,6 +19,7 @@ import Appointment from "../models/AppointmentSchema.js";
 import Medicine from "../models/MedicineSchema.js";
 import MedicineInvoice from "../models/MedicineInvoiceSchema.js";
 
+
 const models = {
   Branch,
   Employee,
@@ -2556,7 +2557,6 @@ export const edit_medicine = async (req, res) => {
     gstOption,
   } = req.body;
 
-
   const { firstName, lastName } = req.verifiedUser;
 
   if (!_id) {
@@ -2565,7 +2565,7 @@ export const edit_medicine = async (req, res) => {
   const departmentIds = departments.map((department) => department.id);
 
   let updatedGst = gst;
-  if(gstOption == "exception"){
+  if (gstOption == "exception") {
     updatedGst = null;
   }
 
@@ -2584,10 +2584,9 @@ export const edit_medicine = async (req, res) => {
     status,
     approved,
     editedBy: firstName + " " + lastName,
-    gst:updatedGst,
-    gstOption
+    gst: updatedGst,
+    gstOption,
   };
-  
 
   if (!Model) {
     return res.status(404).send("Collection not found");
@@ -2661,21 +2660,18 @@ export const add_medicine_invoice = async (req, res) => {
     totalAmount,
     BranchID,
     paymentMethod,
-    PaymentMethodID,
+    paymentMethodID,
     totalDiscount,
     amountToBePaid,
   } = req.body;
 
-  const { firstName, lastName } = req.verifiedUser;
-
-  console.log(paymentMethod, "paymentMethod");
-  console.log(PaymentMethodID, "paymentMethodID");
+  // const { firstName, lastName } = req.verifiedUser;
 
   const validationErrors = await validateInputs([
     [doctorID, "objectId", "doctorID"],
 
     [MainDepartmentID, "objectId", "MainDepartmentID"],
-    [PaymentMethodID, "objectId", "paymentMethodID"],
+    [paymentMethodID, "objectId", "paymentMethodID"],
     [patient._id, "objectId", "patientID"],
     [invoiceID, "name", "invoiceID"],
     [totalAmount, "price", "totalAmount"],
@@ -2693,7 +2689,7 @@ export const add_medicine_invoice = async (req, res) => {
     MainDepartmentID: MainDepartmentID,
     paymentMethod: {
       paymentMethod,
-      PaymentMethodID,
+      paymentMethodID,
     },
     items: items,
     totalAmount: totalAmount,
@@ -2701,7 +2697,7 @@ export const add_medicine_invoice = async (req, res) => {
     amountToBePaid: amountToBePaid,
     BranchID: BranchID,
     status: true,
-    createdBy: `${firstName} ${lastName}`,
+    // createdBy: `${firstName} ${lastName}`,
   };
 
   try {
@@ -2728,10 +2724,7 @@ export const get_Medicine_Invoice_Dropdowns = async (req, res) => {
   const { PatientID, BranchID } = req.query;
   const { firstName, lastName } = req.verifiedUser;
 
-  console.log(PatientID, "PatientID");
-  console.log(BranchID, "BranchID");
-  //  console.log(mainDepartmentID, "mainDepartmentID");
-
+ 
   try {
     const [
       Doctors,
@@ -2746,7 +2739,13 @@ export const get_Medicine_Invoice_Dropdowns = async (req, res) => {
         BranchID,
         status: true,
         isApproved: true,
-      }).populate("DepartmentID"),
+      }).populate({
+        path: 'DepartmentID',
+        populate: {
+          path: 'MainDepartmentID',
+          model: 'MainDepartment'
+        }
+      }),
       Patient.find({
         PatientID,
       })
@@ -2816,9 +2815,79 @@ export const get_Medicine_Invoice_Dropdowns = async (req, res) => {
       paymentMethods,
       createdBy: firstName + " " + lastName,
     });
-    console.log(nextInvoiceID, "nextInvoiceID");
+   // console.log(nextInvoiceID, "nextInvoiceID");
   } catch (err) {
     console.log(err);
     res.status(500).send({ errors: "An error occurred while fetching data." });
   }
 };
+
+// ==============================================================================================================
+
+// medicine invoice fetching
+
+export const get_medicine_invoice_list = async (req, res) => {
+  const { page = 1, limit = 10, PatientID, invoiceID, search } = req.query;
+
+  const { BranchID } = req.params;
+ 
+
+  let filter = {};
+
+  if (BranchID) filter.BranchID = BranchID;
+
+  if (PatientID) filter.PatientID = PatientID;
+
+  if (invoiceID) filter.invoiceID = invoiceID;
+
+  if (search) {
+    filter = {
+      ...filter,
+      $or: [
+        {
+          patientID: {
+            $in: await Patient.find({
+              Name: { $regex: search, $options: "i" },
+            }).distinct("_id"),
+          },
+        },
+        {
+          doctorID: {
+            $in: await Doctor.find({
+              Name: { $regex: search, $options: "i" },
+            }).distinct("_id"),
+          },
+        },
+        {
+          invoiceID: {
+            $regex: search,
+            $options: "i",
+          },
+        },
+      ],
+    };
+  }
+
+  const medicineInvoice = await MedicineInvoice.find(filter)
+    .populate("doctorID")
+    .populate("patientID")
+    .populate("MainDepartmentID")
+    .populate({ path: "items.MedicineID", model: "Medicine" })
+    .sort({ createdAt: -1 })
+    .limit(limit * 1)
+    .skip((page - 1) * limit)
+    .exec();
+
+  const count = await MedicineInvoice.countDocuments(filter);
+
+ 
+
+  res.status(200).json({
+    medicineInvoice,
+    totalPages: Math.ceil(count / limit),
+    currentPage: page,
+  });
+};
+
+
+// ==============================================================================================================
