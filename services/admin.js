@@ -19,7 +19,6 @@ import Appointment from "../models/AppointmentSchema.js";
 import Medicine from "../models/MedicineSchema.js";
 import MedicineInvoice from "../models/MedicineInvoiceSchema.js";
 
-
 const models = {
   Branch,
   Employee,
@@ -2665,7 +2664,7 @@ export const add_medicine_invoice = async (req, res) => {
     amountToBePaid,
   } = req.body;
 
-  // const { firstName, lastName } = req.verifiedUser;
+  const { firstName, lastName } = req.verifiedUser;
 
   const validationErrors = await validateInputs([
     [doctorID, "objectId", "doctorID"],
@@ -2697,7 +2696,7 @@ export const add_medicine_invoice = async (req, res) => {
     amountToBePaid: amountToBePaid,
     BranchID: BranchID,
     status: true,
-    // createdBy: `${firstName} ${lastName}`,
+    createdBy: `${firstName} ${lastName}`,
   };
 
   try {
@@ -2724,7 +2723,6 @@ export const get_Medicine_Invoice_Dropdowns = async (req, res) => {
   const { PatientID, BranchID } = req.query;
   const { firstName, lastName } = req.verifiedUser;
 
- 
   try {
     const [
       Doctors,
@@ -2740,11 +2738,11 @@ export const get_Medicine_Invoice_Dropdowns = async (req, res) => {
         status: true,
         isApproved: true,
       }).populate({
-        path: 'DepartmentID',
+        path: "DepartmentID",
         populate: {
-          path: 'MainDepartmentID',
-          model: 'MainDepartment'
-        }
+          path: "MainDepartmentID",
+          model: "MainDepartment",
+        },
       }),
       Patient.find({
         PatientID,
@@ -2815,7 +2813,7 @@ export const get_Medicine_Invoice_Dropdowns = async (req, res) => {
       paymentMethods,
       createdBy: firstName + " " + lastName,
     });
-   // console.log(nextInvoiceID, "nextInvoiceID");
+    // console.log(nextInvoiceID, "nextInvoiceID");
   } catch (err) {
     console.log(err);
     res.status(500).send({ errors: "An error occurred while fetching data." });
@@ -2830,7 +2828,6 @@ export const get_medicine_invoice_list = async (req, res) => {
   const { page = 1, limit = 10, PatientID, invoiceID, search } = req.query;
 
   const { BranchID } = req.params;
- 
 
   let filter = {};
 
@@ -2880,8 +2877,6 @@ export const get_medicine_invoice_list = async (req, res) => {
 
   const count = await MedicineInvoice.countDocuments(filter);
 
- 
-
   res.status(200).json({
     medicineInvoice,
     totalPages: Math.ceil(count / limit),
@@ -2889,5 +2884,73 @@ export const get_medicine_invoice_list = async (req, res) => {
   });
 };
 
-
 // ==============================================================================================================
+
+// medicine invoice editing
+
+export const edit_medicine_invoice = async (req, res) => {
+  const {
+    invoiceID,
+    MainDepartmentID,
+    patientID,
+    doctorID,
+    items,
+    totalAmount,
+    paymentMethod,
+    paymentMethodID,
+    totalDiscount,
+    amountToBePaid,
+  } = req.body;
+
+  const validationErrors = await validateInputs([
+    [doctorID, "objectId", "doctorID"],
+    [MainDepartmentID, "objectId", "MainDepartmentID"],
+    [paymentMethodID, "objectId", "paymentMethodID"],
+    [patientID, "objectId", "patientID"],
+    [invoiceID, "string", "invoiceID"],
+    [totalAmount, "number", "totalAmount"],
+    [amountToBePaid, "number", "amountToBePaid"],
+  ]);
+
+  if (Object.keys(validationErrors).length > 0)
+    return res.status(400).json({ errors: validationErrors });
+
+  try {
+    const existingInvoice = await MedicineInvoice.findOne({ invoiceID });
+
+    if (!existingInvoice)
+      return res.status(404).send({ error: "Invoice not found" });
+
+    existingInvoice.patientID = patientID;
+    existingInvoice.doctorID = doctorID;
+    existingInvoice.MainDepartmentID = MainDepartmentID;
+    existingInvoice.paymentMethod = {
+      paymentMethod: paymentMethod,
+      paymentMethodID: paymentMethodID,
+    };
+    existingInvoice.items = items;
+    existingInvoice.totalAmount = totalAmount;
+    existingInvoice.totalDiscount = totalDiscount;
+    existingInvoice.amountToBePaid = amountToBePaid;
+
+    const updatedInvoice = await existingInvoice.save();
+
+    for (const item of items) {
+      const existingItem = existingInvoice.items.find(
+        (invItem) => invItem.MedicineID === item.MedicineID
+      );
+      const quantityDifference =
+        item.quantity - (existingItem ? existingItem.quantity : 0);
+
+      await Medicine.findByIdAndUpdate(item.MedicineID, {
+        $inc: { quantity: -quantityDifference },
+      });
+    }
+    res
+      .status(200)
+      .json({ message: "Medicine Invoice Updated", data: updatedInvoice });
+  } catch (err) {
+    res.status(400).json({ error: "Error updating invoice", err });
+    console.log(err);
+  }
+};
