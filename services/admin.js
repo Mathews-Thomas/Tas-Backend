@@ -2954,3 +2954,25 @@ export const edit_medicine_invoice = async (req, res) => {
     console.log(err);
   }
 };
+
+// ==============================================================================================================
+export const delete_medicine_invoice = async (req, res) =>{
+  const { invoiceID} = req.params;
+
+  try{
+   const invoiceToDelete = await MedicineInvoice.findById(invoiceID);
+   if(!invoiceToDelete){
+    return res.status(404).send({message:"Invoice not found"})
+   }
+
+  // const patientID = invoiceToDelete.patientID;
+
+   await MedicineInvoice.findByIdAndDelete(invoiceID);
+
+   res.status(200).send({message:"Medicine Invoices deleted successfully"});
+  }catch(err){
+    console.error("Error deleting invoice",err)
+    res.status(500).send({message:"Failed to delete invoice"})
+  }
+};
+

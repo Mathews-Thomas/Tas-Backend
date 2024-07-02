@@ -50,6 +50,7 @@ import {
   get_Medicine_Invoice_Dropdowns,
   get_medicine_invoice_list,
   edit_medicine_invoice,
+  delete_medicine_invoice,
   // add_medicine_invoice,
 } from "../../services/admin.js";
 import auth from "../../middleware/EmployeeAuth.js";
@@ -182,6 +183,7 @@ router.get(
   serviceHandler(get_medicine_invoice_list)
 );
 router.put("/medicine/edit-invoice", serviceHandler(edit_medicine_invoice));
+router.delete("/medicine/delete-invoice/:invoiceID",auth(), serviceHandler(delete_medicine_invoice));
 
 const adminRouter = router;
 export default adminRouter;
