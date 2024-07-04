@@ -2556,6 +2556,7 @@ export const edit_medicine = async (req, res) => {
     gstOption,
   } = req.body;
 
+ 
   const { firstName, lastName } = req.verifiedUser;
 
   if (!_id) {
