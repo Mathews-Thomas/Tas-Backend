@@ -182,8 +182,16 @@ router.get(
   auth(),
   serviceHandler(get_medicine_invoice_list)
 );
-router.put("/medicine/edit-invoice", serviceHandler(edit_medicine_invoice));
-router.delete("/medicine/delete-invoice/:invoiceID",auth(), serviceHandler(delete_medicine_invoice));
+router.put(
+  "/medicine/edit-invoice",
+  auth(),
+  serviceHandler(edit_medicine_invoice)
+);
+router.delete(
+  "/medicine/delete-invoice/:invoiceID",
+  auth(),
+  serviceHandler(delete_medicine_invoice)
+);
 
 const adminRouter = router;
 export default adminRouter;

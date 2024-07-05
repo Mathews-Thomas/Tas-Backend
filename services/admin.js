@@ -2556,7 +2556,6 @@ export const edit_medicine = async (req, res) => {
     gstOption,
   } = req.body;
 
- 
   const { firstName, lastName } = req.verifiedUser;
 
   if (!_id) {
@@ -2893,7 +2892,6 @@ export const edit_medicine_invoice = async (req, res) => {
   const {
     invoiceID,
     MainDepartmentID,
-    patientID,
     doctorID,
     items,
     totalAmount,
@@ -2903,11 +2901,16 @@ export const edit_medicine_invoice = async (req, res) => {
     amountToBePaid,
   } = req.body;
 
+  const PatientID = req.body.patient ? req.body.patient.id: undefined;
+  const BranchID = req.body.patient ? req.body.patient.BranchID : req.body.MainDepartmentID ? req.body.MainDepartmentID.BranchID : undefined;
+
+
+
   const validationErrors = await validateInputs([
     [doctorID, "objectId", "doctorID"],
     [MainDepartmentID, "objectId", "MainDepartmentID"],
     [paymentMethodID, "objectId", "paymentMethodID"],
-    [patientID, "objectId", "patientID"],
+  
     [invoiceID, "string", "invoiceID"],
     [totalAmount, "number", "totalAmount"],
     [amountToBePaid, "number", "amountToBePaid"],
@@ -2922,7 +2925,7 @@ export const edit_medicine_invoice = async (req, res) => {
     if (!existingInvoice)
       return res.status(404).send({ error: "Invoice not found" });
 
-    existingInvoice.patientID = patientID;
+    existingInvoice.patientID = PatientID;
     existingInvoice.doctorID = doctorID;
     existingInvoice.MainDepartmentID = MainDepartmentID;
     existingInvoice.paymentMethod = {
@@ -2957,23 +2960,24 @@ export const edit_medicine_invoice = async (req, res) => {
 };
 
 // ==============================================================================================================
-export const delete_medicine_invoice = async (req, res) =>{
-  const { invoiceID} = req.params;
+export const delete_medicine_invoice = async (req, res) => {
+  const { invoiceID } = req.params;
 
-  try{
-   const invoiceToDelete = await MedicineInvoice.findById(invoiceID);
-   if(!invoiceToDelete){
-    return res.status(404).send({message:"Invoice not found"})
-   }
+  try {
+    const invoiceToDelete = await MedicineInvoice.findById(invoiceID);
+    if (!invoiceToDelete) {
+      return res.status(404).send({ message: "Invoice not found" });
+    }
 
-  // const patientID = invoiceToDelete.patientID;
+    // const patientID = invoiceToDelete.patientID;
 
-   await MedicineInvoice.findByIdAndDelete(invoiceID);
+    await MedicineInvoice.findByIdAndDelete(invoiceID);
 
-   res.status(200).send({message:"Medicine Invoices deleted successfully"});
-  }catch(err){
-    console.error("Error deleting invoice",err)
-    res.status(500).send({message:"Failed to delete invoice"})
+    res.status(200).send({ message: "Medicine Invoices deleted successfully" });
+  } catch (err) {
+    console.error("Error deleting invoice", err);
+    res.status(500).send({ message: "Failed to delete invoice" });
   }
 };
 
+// ==============================================================================================================
