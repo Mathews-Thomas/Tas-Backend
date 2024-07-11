@@ -51,6 +51,7 @@ import {
   get_medicine_invoice_list,
   edit_medicine_invoice,
   delete_medicine_invoice,
+  consolidated_report_medicine,
   // add_medicine_invoice,
 } from "../../services/admin.js";
 import auth from "../../middleware/EmployeeAuth.js";
@@ -191,6 +192,13 @@ router.delete(
   "/medicine/delete-invoice/:invoiceID",
   auth(),
   serviceHandler(delete_medicine_invoice)
+);
+
+//medicine consolidated report
+router.get(
+  "/medicine/consolidated-report",
+   auth(),
+  serviceHandler(consolidated_report_medicine)
 );
 
 const adminRouter = router;
