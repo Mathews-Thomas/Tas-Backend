@@ -2990,16 +2990,18 @@ export const consolidated_report_medicine = async (req, res) => {
 
    // console.log(startDate, endDate);
 
-    // Date range
-    const start = startDate ? new Date(startDate) : startOfDay(new Date());
-    const end = endDate ? new Date(endDate) : endOfDay(new Date());
-
-    // $gte: ISODate("2024-06-27T00:00:00.000Z"),
+   
+   // $gte: ISODate("2024-06-27T00:00:00.000Z"),
     // $lte: ISODate("2024-07-04T23:59:59.999Z")
-
+    
     const today = new Date();
+   
 const startOfToday = new Date(today.setHours(0, 0, 0, 0));
 const endOfToday = new Date(today.setHours(23, 59, 59, 999));
+
+ // Date range
+    const start = startDate ? new Date(startDate) : startOfDay(new Date());
+    const end = endDate ? new Date(endDate) : endOfDay(new Date());
 
 const pipeline = [
   {
