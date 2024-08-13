@@ -2986,119 +2986,118 @@ export const delete_medicine_invoice = async (req, res) => {
 
 export const consolidated_report_medicine = async (req, res) => {
   try {
-    const { startDate, endDate } = req.query;
-
-   // console.log(startDate, endDate);
-
-   
-   // $gte: ISODate("2024-06-27T00:00:00.000Z"),
-    // $lte: ISODate("2024-07-04T23:59:59.999Z")
     
-    const today = new Date();
-   
-const startOfToday = new Date(today.setHours(0, 0, 0, 0));
-const endOfToday = new Date(today.setHours(23, 59, 59, 999));
+    const { startDate, endDate } = req.query;
+    
+    // console.log(startDate, endDate);
+    // $gte: ISODate("2024-06-27T00:00:00.000Z"),
+    // $lte: ISODate("2024-07-04T23:59:59.999Z")
 
- // Date range
+    const today = new Date();
+
+    const startOfToday = new Date(today.setHours(0, 0, 0, 0));
+    const endOfToday = new Date(today.setHours(23, 59, 59, 999));
+
+    // Date range
     const start = startDate ? new Date(startDate) : startOfDay(new Date());
     const end = endDate ? new Date(endDate) : endOfDay(new Date());
 
-const pipeline = [
-  {
-    $match: {
-      createdAt: {
-        $gte: start,
-        $lte: end,
-      },
-    },
-  },
-  {
-    $addFields: {
-      isToday: {
-        $and: [
-          { $gte: ["$createdAt", startOfToday] },
-          { $lte: ["$createdAt", endOfToday] },
-        ],
-      },
-    },
-  },
-  {
-    $group: {
-      _id: {
-        branch: "$BranchID",
-        department: "$MainDepartmentID",
-        isToday: "$isToday",
-      },
-      branchInvoiceCount: { $sum: 1 },
-      totalAmountCollected: { $sum: "$totalAmount" },
-      departmentInvoiceCount: { $sum: 1 },
-    },
-  },
-  {
-    $group: {
-      _id: {
-        branch: "$_id.branch",
-        isToday: "$_id.isToday",
-      },
-      departments: {
-        $push: {
-          department: "$_id.department",
-          totalAmountCollected: "$totalAmountCollected",
-          departmentInvoiceCount: "$departmentInvoiceCount",
-        },
-      },
-      branchInvoiceCount: { $sum: "$branchInvoiceCount" },
-      totalAmountCollectedByBranch: { $sum: "$totalAmountCollected" },
-    },
-  },
-  {
-    $lookup: {
-      from: "branches",
-      localField: "_id.branch",
-      foreignField: "_id",
-      as: "branch",
-    },
-  },
-  {
-    $lookup: {
-      from: "maindepartments",
-      localField: "departments.department",
-      foreignField: "_id",
-      as: "departmentDetails",
-    },
-  },
-  {
-    $project: {
-      _id: 0,
-      branch: { $arrayElemAt: ["$branch.branchName", 0] },
-      branchInvoiceCount: 1,
-      totalAmountCollectedByBranch: 1,
-      isToday: "$_id.isToday",
-      departments: {
-        $map: {
-          input: "$departments",
-          as: "dept",
-          in: {
-            department: {
-              $arrayElemAt: [
-                {
-                  $filter: {
-                    input: "$departmentDetails",
-                    as: "detail",
-                    cond: { $eq: ["$$detail._id", "$$dept.department"] },
-                  },
-                },
-                0,
-              ],
-            },
-            totalAmountCollected: "$$dept.totalAmountCollected",
-            departmentInvoiceCount: "$$dept.departmentInvoiceCount",
+    const pipeline = [
+      {
+        $match: {
+          createdAt: {
+            $gte: start,
+            $lte: end,
           },
         },
       },
-    },
-  },
-];
+      {
+        $addFields: {
+          isToday: {
+            $and: [
+              { $gte: ["$createdAt", startOfToday] },
+              { $lte: ["$createdAt", endOfToday] },
+            ],
+          },
+        },
+      },
+      {
+        $group: {
+          _id: {
+            branch: "$BranchID",
+            department: "$MainDepartmentID",
+            isToday: "$isToday",
+          },
+          branchInvoiceCount: { $sum: 1 },
+          totalAmountCollected: { $sum: "$totalAmount" },
+          departmentInvoiceCount: { $sum: 1 },
+        },
+      },
+      {
+        $group: {
+          _id: {
+            branch: "$_id.branch",
+            isToday: "$_id.isToday",
+          },
+          departments: {
+            $push: {
+              department: "$_id.department",
+              totalAmountCollected: "$totalAmountCollected",
+              departmentInvoiceCount: "$departmentInvoiceCount",
+            },
+          },
+          branchInvoiceCount: { $sum: "$branchInvoiceCount" },
+          totalAmountCollectedByBranch: { $sum: "$totalAmountCollected" },
+        },
+      },
+      {
+        $lookup: {
+          from: "branches",
+          localField: "_id.branch",
+          foreignField: "_id",
+          as: "branch",
+        },
+      },
+      {
+        $lookup: {
+          from: "maindepartments",
+          localField: "departments.department",
+          foreignField: "_id",
+          as: "departmentDetails",
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          branch: { $arrayElemAt: ["$branch.branchName", 0] },
+          branchInvoiceCount: 1,
+          totalAmountCollectedByBranch: 1,
+          isToday: "$_id.isToday",
+          departments: {
+            $map: {
+              input: "$departments",
+              as: "dept",
+              in: {
+                department: {
+                  $arrayElemAt: [
+                    {
+                      $filter: {
+                        input: "$departmentDetails",
+                        as: "detail",
+                        cond: { $eq: ["$$detail._id", "$$dept.department"] },
+                      },
+                    },
+                    0,
+                  ],
+                },
+                totalAmountCollected: "$$dept.totalAmountCollected",
+                departmentInvoiceCount: "$$dept.departmentInvoiceCount",
+              },
+            },
+          },
+        },
+      },
+    ];
 
     const report = await MedicineInvoice.aggregate(pipeline);
 
